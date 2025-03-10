@@ -1,7 +1,6 @@
 from flask import jsonify, request, Blueprint
 from conection import conect
 from mysql.connector import Error
-
 bp_atualizar_servidor = Blueprint('bp_atualizar_servidor', __name__)
 
 @bp_atualizar_servidor.route('/api/servidores/<int:id>', methods=['PUT'])
@@ -19,7 +18,7 @@ def atualizar_servidor(id):
             return jsonify({'erro': 'Servidor não encontrado'}), 404
 
         # Lista de campos que podem ser atualizados
-        campos_permitidos = ['setor', 'nome', 'matricula', 'cargo', 'funcao', 'horario', 'entrada', 'saida', 'ferias_inicio', 'ferias_termino']
+        campos_permitidos = ['setor', 'nome', 'matricula', 'cargo', 'funcao', 'horario', 'horarioentrada', 'horariosaida', 'feriasinicio', 'feriasfinal']
         
         # Dicionário para armazenar os campos e valores que serão atualizados
         campos_para_atualizar = {}

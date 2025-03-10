@@ -8,6 +8,9 @@ from flask_cors import CORS
 from routes.deletar_servidores import bp_deletar_servidor
 from routes.atualizar_servidores import bp_atualizar_servidor
 
+
+
+
 app = Flask(__name__)
 CORS(app)  # Habilita o CORS na aplicação
 

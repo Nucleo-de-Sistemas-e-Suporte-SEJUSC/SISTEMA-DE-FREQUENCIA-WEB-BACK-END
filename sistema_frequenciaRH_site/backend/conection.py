@@ -5,9 +5,9 @@ def conect():
    
     try:
         conexao = mysql.connector.connect(
-            host="12.90.1.2",       # IP do servidor
-            user="devop",           # Usuário do banco
-            password="DEVsjc@2025", # Senha do usuário
+            host="12.90.1.2",               # IP do servidor
+            user="devop",                       # Usuário do banco #  mysql -h 12.90.1.2 -u devop -p  para acessar o banco de dados via terminal
+            password="DEVsjc@2025",            # Senha do usuário
             database="sistema_frequenciarh"  # Nome do banco de dados
         )
         if conexao.is_connected():

@@ -5,12 +5,15 @@ from flask import Blueprint, request, jsonify
 from conection import conect
 from mysql.connector import Error
 from docx import Document
-from datetime import date
+from datetime import datetime, date
+import win32com.client
+import pythoncom 
 import os
+import calendar
 
 bp_converte_servidor_pdf = Blueprint('bp_converte_servidor_pdf', __name__)
 
-@bp_converte_servidor_pdf.route('/api/servidores/pdf/<int:servidor_id>', methods=['GET'])
+@bp_converte_servidor_pdf.route('/api/servidores/pdf/<int:servidor_id>', methods=['POST'])
 def converte_servidor_pdf(servidor_id):
     try:
         conexao = conect()
@@ -43,6 +46,7 @@ def converte_servidor_pdf(servidor_id):
         busca_servidor_por_id = "SELECT * FROM funcionarios WHERE id = %s"
         cursor.execute(busca_servidor_por_id, (servidor_id,))
         servidor = cursor.fetchone()
+        print(servidor)
 
         if not servidor:
             conexao.close()
@@ -56,8 +60,8 @@ def converte_servidor_pdf(servidor_id):
             "CAMPO NOME": servidor['nome'],
             "CAMPO ANO": str(ano),
             "CAMPO HORARIO": str(servidor['horario']),
-            "CAMPO ENTRADA": str(servidor['entrada']),
-            "CAMPO SAÍDA": str(servidor['saida']),
+            "CAMPO ENTRADA": str(servidor['horarioentrada']),
+            "CAMPO SAÍDA": str(servidor['horariosaida']),
             "CAMPO MATRÍCULA": str(servidor['matricula']),
             "CAMPO CARGO": servidor['cargo'],
             "CAMPO FUNÇÃO": str(servidor['funcao']),
@@ -111,12 +115,12 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor
                             row.cells[13].text = "DOMINGO"
 
                     
-                    if servidor['ferias_inicio'] is not None and servidor['ferias_termino'] is not None:
+                    if servidor['feriasinicio'] is not None and servidor['feriasfinal'] is not None:
                         # Verifica se a data de referência está dentro do período de férias
-                        if servidor['ferias_inicio'] <= date(ano, mes_numerico, dias) <= servidor['ferias_termino']:
+                        if servidor['feriasinicio'] <= date(ano, mes_numerico, dias) <= servidor['feriasfinal']:
                             # Verifica se o dia da semana não é sábado (5) ou domingo (6)
                             if dia_semana not in [5, 6]:
-                                print(servidor['ferias_inicio'].day)
+                                
                                 run = paragraph.add_run(str(dias))
                                 row.cells[2].text = "FÉRIAS"
                                 row.cells[5].text = "FÉRIAS"

@@ -18,7 +18,7 @@ def importar_dados(file_path):
         for _, linha in df.iterrows():
             sql = """
                 INSERT INTO funcionarios 
-                (setor, nome, matricula, cargo, funcao, horario, entrada, saida, ferias_inicio, ferias_termino)
+                (setor, nome, matricula, cargo, funcao, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             valores = (
@@ -28,10 +28,10 @@ def importar_dados(file_path):
                 linha["CARGO"],
                 linha["FUNCAO"] if not pd.isna(linha["FUNCAO"]) else None,
                 linha["HORARIO"],
-                linha["ENTRADA"] if not pd.isna(linha["ENTRADA"]) else None,
-                linha["SAIDA"] if not pd.isna(linha["SAIDA"]) else None,
+                linha["HORARIOENTRADA"] if not pd.isna(linha["HORARIOENTRADA"]) else None,
+                linha["HORARIOSAIDA"] if not pd.isna(linha["HORARIOSAIDA"]) else None,
                 linha["FERIASINICIO"] if not pd.isna(linha["FERIASINICIO"]) else None,
-                linha["FERIASTERMINO"] if not pd.isna(linha["FERIASTERMINO"]) else None,
+                linha["FERIASFINAL"] if not pd.isna(linha["FERIASFINAL"]) else None,
             )
             cursor.execute(sql, valores)
 

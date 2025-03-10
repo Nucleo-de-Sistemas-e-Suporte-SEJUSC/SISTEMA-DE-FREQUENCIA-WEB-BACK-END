@@ -58,13 +58,13 @@ def converte_setores_pf(setor):
                 "CAMPO NOME": setor['nome'],
                 "CAMPO ANO": str(data_ano_mes_atual['ano']),
                 "CAMPO HORARIO": str(setor['horario']),
-                "CAMPO ENTRADA": str(setor['entrada']),
-                "CAMPO SAÍDA": str(setor['saida']),
+                "CAMPO ENTRADA": str(setor['horarioentrada']),
+                "CAMPO SAÍDA": str(setor['horariosaida']),
                 "CAMPO MATRÍCULA": str(setor['matricula']),
                 "CAMPO CARGO": setor['cargo'],
                 "CAMPO FUNÇÃO": str(setor['funcao']),
-                "FERIAS INICIO": setor['ferias_inicio'],
-                "FERIAS TERMINO": setor['ferias_termino'],
+                "FERIAS INICIO": setor['feriasinicio'],
+                "FERIAS TERMINO": setor['feriasfinal'],
             }
 
             dados_setores.append(troca_dados_setor)
