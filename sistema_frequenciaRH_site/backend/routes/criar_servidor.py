@@ -25,10 +25,10 @@ def criar_servidor():
         cargo = body.get('cargo')
         funcao = body.get('funcao')
         horario = body.get('horario')
-        entrada = body.get('entrada')
-        saida = body.get('saida')
-        ferias_inicio = body.get('ferias_inicio')
-        ferias_termino = body.get('ferias_termino')
+        horarioentrada = body.get('entrada')
+        horariosaida = body.get('saida')
+        feriasinicio = body.get('feriasinicio')
+        feriasfinal = body.get('feriasfinal')
 
         verifica_se_servidor_existe = "SELECT * FROM funcionarios WHERE nome = %s"
         cursor.execute(verifica_se_servidor_existe, (nome,))
@@ -39,10 +39,10 @@ def criar_servidor():
             return jsonify({'erro': 'Servidor já cadastrado'}), 409
 
         criar_dados_servidor = """
-            INSERT INTO funcionarios (setor, nome, matricula, cargo, funcao, horario, entrada, saida, ferias_inicio, ferias_termino)
+            INSERT INTO funcionarios (setor, nome, matricula, cargo, funcao, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        cursor.execute(criar_dados_servidor, (setor, nome, matricula, cargo, funcao, horario, entrada, saida, ferias_inicio, ferias_termino,))
+        cursor.execute(criar_dados_servidor, (setor, nome, matricula, cargo, funcao, horario,horarioentrada, horariosaida, feriasinicio, feriasfinal,))
         conexao.commit()
         conexao.close()
         
@@ -54,10 +54,10 @@ def criar_servidor():
             "cargo": cargo,
             "funcao": funcao,
             "horario": horario,
-            "entrada": entrada,
-            "saida": saida,
-            "ferias_inicio": ferias_inicio,
-            "ferias_termino": ferias_termino
+            "entrada": horarioentrada,
+            "saida": horariosaida,
+            "feriasinicio": feriasinicio,
+            "feriastermino": feriasfinal
 
         } 
 
