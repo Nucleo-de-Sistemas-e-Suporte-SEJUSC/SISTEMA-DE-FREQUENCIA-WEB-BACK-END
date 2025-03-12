@@ -1,17 +1,16 @@
-from flask import jsonify, request, Blueprint
+from flask import jsonify, Blueprint
 from conection import conect
 from mysql.connector import Error
 
-bp_arquivar_servidor = Blueprint('bp_arquivar_servidor', __name__)
+bp_atualizar_servidor_status = Blueprint('bp_atualizar_servidor_status', __name__)
 
-# Rota para arquivar um servidor (funcionário)
-@bp_arquivar_servidor.route('/api/servidores/<int:id>/arquivar', methods=['PATCH'])
-def arquivar_servidor(id):
+@bp_atualizar_servidor_status.route('/api/servidores/<int:id>/atualizar-status', methods=['PATCH'])
+def atualizar_status_servidor(id):
     try:
         conexao = conect()
         cursor = conexao.cursor(dictionary=True)
 
-        # Verifica se o servidor (funcionário) existe
+        # Verifica se o servidor existe
         verifica_se_servidor_existe = "SELECT * FROM funcionarios WHERE id = %s"
         cursor.execute(verifica_se_servidor_existe, (id,))
         servidor = cursor.fetchone()
@@ -21,16 +20,19 @@ def arquivar_servidor(id):
             conexao.close()
             return jsonify({'erro': 'Servidor não encontrado'}), 404
 
-        # Atualiza o status do servidor para "arquivado"
-        arquivar_servidor = """
+        # Defina o novo status como "ativo"
+        novo_status = 'ativo'
+
+        # Atualiza o status do servidor
+        atualizar_status = """
             UPDATE funcionarios
-            SET status = 'arquivado'
+            SET status = %s
             WHERE id = %s
         """
-        cursor.execute(arquivar_servidor, (id,))
+        cursor.execute(atualizar_status, (novo_status, id))
         conexao.commit()
         conexao.close()
 
-        return jsonify({'mensagem': 'Servidor arquivado com sucesso'}), 200
+        return jsonify({'mensagem': 'Status do servidor atualizado com sucesso'}), 200
     except Exception as exception:
         return jsonify({'erro': f'Erro ao conectar ao banco de dados: {str(exception)}'}), 500
