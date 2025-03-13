@@ -11,10 +11,9 @@ def conect():
             #database="sistema_frequenciarh"  # Nome do banco de dados
             
             host="127.0.0.1",               # IP do servidor
-            user="root",                       # Usuário do banco #  mysql -h 12.90.1.2 -u devop -p  para acessar o banco de dados via terminal
-            password="",            # Senha do usuário
-            database="sistema_frequenciarh"
-        )
+            user="sejusc",                       # Usuário do banco #  mysql -h 12.90.1.2 -u devop -p  para acessar o banco de dados via terminal
+            password="senhatopzona",            # Senha do usuário
+            database="gestao-rh")
         if conexao.is_connected():
             print("Conexão com o banco de dados bem-sucedida!")
             return conexao
