@@ -15,7 +15,10 @@ services:
       MYSQL_USER: sejusc
       MYSQL_PASSWORD: senhatopzona
     networks:
-      -  rede-sejusc
+      - rede-sejusc
+      - volumes:
+      - mysql-data:/var/lib/mysql
+
 
 networks:
   rede-sejusc:
