@@ -5,15 +5,10 @@ def conect():
    
     try:
         conexao = mysql.connector.connect(
-            #host="12.90.1.2",               # IP do servidor da intranet
-            #user="devop",                       # Usuário do banco #  mysql -h 12.90.1.2 -u devop -p  para acessar o banco de dados via terminal
-            #password="DEVsjc@2025",            # Senha do usuário intranet
-            #database="sistema_frequenciarh"  # Nome do banco de dados intranet
-            
-            host="127.0.0.1",               # IP do servidor
-            user="root",                       # Usuário do banco #  mysql -h 12.90.1.2 -u devop -p  para acessar o banco de dados via terminal
-            password="",            # Senha do usuário
-            database="sistema_frequenciarh"
+            host="12.90.1.2",               # IP do servidor da intranet
+            user="devop",                       # Usuário do banco #  mysql -h 12.90.1.2 -u devop -p  para acessar o banco de dados via terminal
+            password="DEVsjc@2025",            # Senha do usuário intranet
+            database="sistema_frequenciarh"  # Nome do banco de dados intranet
         )
         if conexao.is_connected():
             print("Conexão com o banco de dados bem-sucedida!")
