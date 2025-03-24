@@ -1,7 +1,7 @@
 from flask import jsonify, request
 from datetime import timedelta
-from conection import conect
 from mysql.connector import Error
+from conection_mysql import connect_mysql
 from . import bp  # Importa o Blueprint
 
 def timedelta_to_str(td):
@@ -14,7 +14,7 @@ def timedelta_to_str(td):
 @bp.route("/api/servidores", methods=["GET"])
 def buscar_servidores():
     try:
-        conexao = conect()
+        conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
         # Verifica se o parâmetro `listar_setores` foi enviado

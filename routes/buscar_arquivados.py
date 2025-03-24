@@ -1,5 +1,5 @@
 from flask import jsonify, Blueprint
-from conection import conect
+from conection_mysql import connect_mysql
 from mysql.connector import Error
 
 bp_buscar_servidores_arquivados = Blueprint('bp_buscar_servidores_arquivados', __name__)
@@ -7,7 +7,7 @@ bp_buscar_servidores_arquivados = Blueprint('bp_buscar_servidores_arquivados', _
 @bp_buscar_servidores_arquivados.route('/api/servidores/arquivados', methods=['GET'])
 def buscar_servidores_arquivados():
     try:
-        conexao = conect()
+        conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
         # Consulta para buscar todos os servidores arquivados

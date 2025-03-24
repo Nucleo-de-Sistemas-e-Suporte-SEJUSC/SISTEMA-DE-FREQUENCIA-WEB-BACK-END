@@ -2,7 +2,7 @@ from utils.convert_to_pdf import convert_to_pdf
 from utils.muda_texto_documento import muda_texto_documento
 from utils.formata_datas import data_atual, pega_final_de_semana, pega_quantidade_dias_mes
 from flask import Blueprint, request, jsonify
-from conection import conect
+from conection_mysql import connect_mysql
 from mysql.connector import Error
 from docx import Document
 from datetime import datetime, date
@@ -16,7 +16,7 @@ bp_converte_servidor_pdf = Blueprint('bp_converte_servidor_pdf', __name__)
 @bp_converte_servidor_pdf.route('/api/servidores/pdf/<int:servidor_id>', methods=['POST'])
 def converte_servidor_pdf(servidor_id):
     try:
-        conexao = conect()
+        conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
         body = request.json or {}
 

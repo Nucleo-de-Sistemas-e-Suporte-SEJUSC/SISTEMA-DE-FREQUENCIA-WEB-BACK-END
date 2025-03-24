@@ -1,5 +1,5 @@
 from flask import jsonify, request, Blueprint
-from conection import conect
+from conection_mysql import connect_mysql
 from mysql.connector import Error
 
 bp_arquivar_servidor = Blueprint('bp_arquivar_servidor', __name__)
@@ -8,7 +8,7 @@ bp_arquivar_servidor = Blueprint('bp_arquivar_servidor', __name__)
 @bp_arquivar_servidor.route('/api/servidores/<int:id>/arquivar', methods=['PATCH'])
 def arquivar_servidor(id):
     try:
-        conexao = conect()
+        conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
         # Verifica se o servidor (funcionário) existe

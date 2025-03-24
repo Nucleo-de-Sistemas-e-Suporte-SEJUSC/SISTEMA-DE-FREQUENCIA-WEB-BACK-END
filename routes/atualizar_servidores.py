@@ -1,12 +1,12 @@
 from flask import jsonify, request, Blueprint
-from conection import conect
+from conection_mysql import connect_mysql
 from mysql.connector import Error
 bp_atualizar_servidor = Blueprint('bp_atualizar_servidor', __name__)
 
 @bp_atualizar_servidor.route('/api/servidores/<int:id>', methods=['PUT'])
 def atualizar_servidor(id):
     try:
-        conexao = conect()
+        conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
         body = request.json
 

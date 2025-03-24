@@ -2,8 +2,7 @@ from utils.convert_to_pdf import convert_to_pdf
 from utils.muda_texto_documento import muda_texto_documento
 from utils.formata_datas import data_atual, pega_final_de_semana, pega_quantidade_dias_mes
 from flask import Blueprint, request, jsonify
-from conection import conect
-from mysql.connector import Error
+from conection_mysql import connect_mysql
 from docx import Document
 from datetime import datetime, date
 import os
@@ -14,7 +13,7 @@ bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
 @bp_converte_setor_pdf.route('/api/setores/pdf/<setor>', methods=['GET'])
 def converte_setores_pf(setor):
     try:
-        conexao = conect()
+        conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
         body = request.json or {}
 

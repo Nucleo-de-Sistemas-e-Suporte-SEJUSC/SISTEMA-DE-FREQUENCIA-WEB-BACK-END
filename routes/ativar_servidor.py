@@ -1,5 +1,5 @@
 from flask import jsonify, Blueprint
-from conection import conect
+from conection_mysql import connect_mysql
 from mysql.connector import Error
 
 bp_atualizar_servidor_status = Blueprint('bp_atualizar_servidor_status', __name__)
@@ -7,7 +7,7 @@ bp_atualizar_servidor_status = Blueprint('bp_atualizar_servidor_status', __name_
 @bp_atualizar_servidor_status.route('/api/servidores/<int:id>/atualizar-status', methods=['PATCH'])
 def atualizar_status_servidor(id):
     try:
-        conexao = conect()
+        conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
         # Verifica se o servidor existe

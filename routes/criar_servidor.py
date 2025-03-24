@@ -1,7 +1,7 @@
 from validators.criar_servidor_validator import validator
 from cerberus import Validator
 from flask import jsonify, request, Blueprint
-from conection import conect
+from conection_mysql import connect_mysql
 from mysql.connector import Error
 
 bp_criar_servidor = Blueprint('bp_criar_servidor', __name__)
@@ -10,7 +10,7 @@ bp_criar_servidor = Blueprint('bp_criar_servidor', __name__)
 @bp_criar_servidor.route('/api/servidores', methods=['POST'])
 def criar_servidor():
     try:
-        conexao = conect()
+        conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
         body = request.json
         validate = validator.validate(body)
