@@ -20,10 +20,14 @@ def conect_firestore():
         print(f"Erro ao conectar ao Firestore: {e}")
         return None
 
-# Teste da conexão (somente para depuração)
+# Teste das conexões (somente para depuração)
 if __name__ == "__main__":
-    db = conect_firestore()
-    if db:
+    # Testar conexão com Firestore
+    db_firestore = conect_firestore()
+    if db_firestore:
         print("Conexão com Firestore estabelecida com sucesso.")
     else:
         print("Falha ao estabelecer conexão com Firestore.")
+
+ 
+
