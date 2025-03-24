@@ -1,52 +1,35 @@
 import pandas as pd
-from mysql.connector import Error
-from conection import conect
+from conection import conect_firestore
 
-def importar_dados(file_path):
+def importar_dados_para_firestore(file_path):
     try:
+        # Estabelecer conexão com Firestore
+        db = conect_firestore()
+        if not db:
+            raise Exception("Falha ao conectar ao Firestore.")
+
         # Ler o arquivo Excel
         df = pd.read_excel(file_path)
 
         # Substituir valores ausentes (NaN) por None
         df = df.where(pd.notnull(df), None)
 
-        # Conectar ao banco de dados
-        conexao = conect()
-        cursor = conexao.cursor()
-
-        # Iterar sobre os registros do DataFrame e inserir no banco
+        # Iterar sobre os registros do DataFrame e inserir no Firestore
         for _, linha in df.iterrows():
-            sql = """
-                INSERT INTO estagiarios 
-                (nome, cargo,lotacao,horario)
-                VALUES (%s, %s, %s, %s
-                )
-            """
-            valores = (
-                linha["NOME"],
-                linha["CARGO"],
-                linha["LOTACAO"],
-                linha["HORARIO"],
-            )
-            cursor.execute(sql, valores)
+            # Usando add() para gerar um ID automático
+            db.collection("estagiarios").add({
+                "nome": linha["NOME"],
+                "cargo": linha["CARGO"],
+                "lotacao": linha["LOTACAO"],
+                "horario": linha["HORARIO"],
+            })
 
-        # Confirmar as alterações no banco de dados
-        conexao.commit()
-        print("Dados importados com sucesso!")
+        print("Dados importados com sucesso para a coleção 'estagiarios' no Firestore!")
 
-    except Error as e:
-        print(f"Erro ao conectar ou inserir no banco de dados: {e}")
     except Exception as e:
-        print(f"Erro ao processar o arquivo Excel: {e}")
-    finally:
-        if 'conexao' in locals() and conexao.is_connected():
-            cursor.close()
-            conexao.close()
-            print("Conexão com o banco de dados encerrada.")
+        print(f"Erro ao processar o arquivo Excel ou inserir no Firestore: {e}")
 
-
-
+# Testar a função com um arquivo Excel
 if __name__ == "__main__":
-    # Substitua pelo caminho do seu arquivo Excel
-    caminho_arquivo = "FREQUÊNCIAS ESTAGIÁRIO.xlsx"
-    importar_dados(caminho_arquivo)
+    caminho_arquivo = "FREQUÊNCIAS ESTAGIÁRIO.xlsx"  # Substitua pelo caminho do seu arquivo Excel
+    importar_dados_para_firestore(caminho_arquivo)
