@@ -6,10 +6,8 @@ from conection_mysql import connect_mysql
 from mysql.connector import Error
 from docx import Document
 from datetime import datetime, date
-import win32com.client
-import pythoncom 
 import os
-import calendar
+
 
 bp_converte_servidor_pdf = Blueprint('bp_converte_servidor_pdf', __name__)
 
