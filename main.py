@@ -11,6 +11,7 @@ from routes.ativar_servidor import bp_atualizar_servidor_status
 from routes.buscar_arquivados import bp_buscar_servidores_arquivados
 from routes.buscar_estagiarios import bp_buscar_estagiarios
 from routes.buscar_setor import bp_buscar_setor
+from auth import auth_bp
 
 app = Flask(__name__)
 CORS(app)  # Habilita o CORS na aplicação
@@ -25,7 +26,9 @@ app.register_blueprint(bp_arquivar_servidor)
 app.register_blueprint(bp_atualizar_servidor_status)
 app.register_blueprint(bp_buscar_servidores_arquivados)
 app.register_blueprint(bp_buscar_estagiarios)
-app.register_blueprint(bp_buscar_setor) # busca setores e quantidade de servidores por setor
+app.register_blueprint(bp_buscar_setor)
+app.register_blueprint(auth_bp)
+
 @app.route("/")
 def home():
     return "Bem vindo ao sistema de frequencia do rh!"

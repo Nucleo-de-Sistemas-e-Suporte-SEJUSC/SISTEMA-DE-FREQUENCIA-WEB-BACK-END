@@ -1,11 +1,14 @@
 from flask import Blueprint, jsonify, request
 from mysql.connector import Error
 from conection_mysql import connect_mysql
-
+from flask_login import login_required  # Importa diretamente do Flask-Login
+from decorador import roles_required 
 # Definir o Blueprint
 bp_buscar_estagiarios = Blueprint('bp_buscar_estagiarios', __name__)
 
 @bp_buscar_estagiarios.route("/api/estagiarios", methods=["GET"])
+@login_required
+@roles_required('admin','editor')
 def buscar_estagiarios():
     try:
         conexao = connect_mysql()

@@ -3,6 +3,9 @@ from datetime import timedelta
 from mysql.connector import Error
 from conection_mysql import connect_mysql
 from . import bp  # Importa o Blueprint
+from flask_login import login_required  # Importa diretamente do Flask-Login
+from decorador import roles_required  # Importa apenas o decorador personalizado
+
 
 def timedelta_to_str(td):
     """Converte timedelta em string no formato HH:MM:SS"""
@@ -11,7 +14,10 @@ def timedelta_to_str(td):
     minutes, seconds = divmod(remainder, 60)
     return f"{hours:02}:{minutes:02}:{seconds:02}"
 
+
 @bp.route("/api/servidores", methods=["GET"])
+@login_required  # Verifica se o usuário está autenticado
+@roles_required('admin', 'editor')  # Verifica se o usuário tem os papéis necessários
 def buscar_servidores():
     try:
         conexao = connect_mysql()
@@ -48,7 +54,7 @@ def buscar_servidores():
         if len(servidores) == 0:
             conexao.close()
             return jsonify({"erro": "Nenhum servidor encontrado"}), 404
-            
+
         # Converte campos timedelta em string
         for servidor in servidores:
             for key, value in servidor.items():

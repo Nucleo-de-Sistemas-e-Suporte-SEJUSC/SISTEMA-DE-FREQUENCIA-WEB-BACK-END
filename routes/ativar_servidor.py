@@ -1,10 +1,14 @@
 from flask import jsonify, Blueprint
 from conection_mysql import connect_mysql
 from mysql.connector import Error
+from flask_login import login_required  # Importa diretamente do Flask-Login
+from decorador import roles_required 
 
 bp_atualizar_servidor_status = Blueprint('bp_atualizar_servidor_status', __name__)
 
 @bp_atualizar_servidor_status.route('/api/servidores/<int:id>/atualizar-status', methods=['PATCH'])
+@login_required
+@roles_required('admin')
 def atualizar_status_servidor(id):
     try:
         conexao = connect_mysql()

@@ -1,10 +1,15 @@
 from flask import jsonify, Blueprint
 from conection_mysql import connect_mysql
 from mysql.connector import Error
+from flask_login import login_required  # Importa diretamente do Flask-Login
+from decorador import roles_required   # Importa o decorador personalizado
+
 
 bp_buscar_servidores_arquivados = Blueprint('bp_buscar_servidores_arquivados', __name__)
 
 @bp_buscar_servidores_arquivados.route('/api/servidores/arquivados', methods=['GET'])
+@login_required
+@roles_required('admin','editor')
 def buscar_servidores_arquivados():
     try:
         conexao = connect_mysql()

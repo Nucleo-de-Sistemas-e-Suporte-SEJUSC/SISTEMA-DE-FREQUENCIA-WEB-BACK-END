@@ -1,11 +1,15 @@
 from flask import jsonify, request, Blueprint
 from conection_mysql import connect_mysql
 from mysql.connector import Error
+from flask_login import login_required  # Importa diretamente do Flask-Login
+from decorador import roles_required 
 
 bp_arquivar_servidor = Blueprint('bp_arquivar_servidor', __name__)
 
 # Rota para arquivar um servidor (funcionário)
 @bp_arquivar_servidor.route('/api/servidores/<int:id>/arquivar', methods=['PATCH'])
+@login_required
+@roles_required('admin')
 def arquivar_servidor(id):
     try:
         conexao = connect_mysql()

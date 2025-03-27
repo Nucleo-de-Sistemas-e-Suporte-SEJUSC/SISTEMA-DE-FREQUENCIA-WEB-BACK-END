@@ -7,10 +7,16 @@ from docx import Document
 from datetime import datetime, date
 import os
 import calendar
+from flask_login import login_required  # Importa diretamente do Flask-Login
+from decorador import roles_required 
+# Importa o decorador personalizado
+
 
 bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
 
 @bp_converte_setor_pdf.route('/api/setores/pdf/<setor>', methods=['GET'])
+@login_required
+@roles_required('admin','editor')
 def converte_setores_pf(setor):
     try:
         conexao = connect_mysql()

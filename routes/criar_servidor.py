@@ -3,11 +3,17 @@ from cerberus import Validator
 from flask import jsonify, request, Blueprint
 from conection_mysql import connect_mysql
 from mysql.connector import Error
+from flask_login import login_required  # Importa diretamente do Flask-Login
+from decorador import roles_required 
+# Importa o decorador personalizado
+
 
 bp_criar_servidor = Blueprint('bp_criar_servidor', __name__)
 
 
 @bp_criar_servidor.route('/api/servidores', methods=['POST'])
+@login_required
+@roles_required('admin','editor')
 def criar_servidor():
     try:
         conexao = connect_mysql()

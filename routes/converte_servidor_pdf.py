@@ -7,11 +7,16 @@ from mysql.connector import Error
 from docx import Document
 from datetime import datetime, date
 import os
+from flask_login import login_required  # Importa diretamente do Flask-Login
+from decorador import roles_required 
+ # Importa o decorador personalizado
 
 
 bp_converte_servidor_pdf = Blueprint('bp_converte_servidor_pdf', __name__)
 
 @bp_converte_servidor_pdf.route('/api/servidores/pdf/<int:servidor_id>', methods=['POST'])
+@login_required
+@roles_required('admin','editor')
 def converte_servidor_pdf(servidor_id):
     try:
         conexao = connect_mysql()
