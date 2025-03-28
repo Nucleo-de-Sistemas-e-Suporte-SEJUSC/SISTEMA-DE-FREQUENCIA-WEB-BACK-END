@@ -7,7 +7,7 @@ from routes.converte_setores_pdf import bp_converte_setor_pdf
 from flask_cors import CORS
 from routes.atualizar_servidores import bp_atualizar_servidor
 from routes.arquivar import bp_arquivar_servidor
-from routes.ativar_servidor import bp_atualizar_servidor_status
+from routes.ativar_servidor import bp_ativar_servidor_status
 from routes.buscar_arquivados import bp_buscar_servidores_arquivados
 from routes.buscar_estagiarios import bp_buscar_estagiarios
 from routes.buscar_setor import bp_buscar_setor
@@ -29,7 +29,7 @@ app.register_blueprint(bp_converte_servidor_pdf)  # converte um servidor em pdf
 app.register_blueprint(bp_converte_setor_pdf)  # converte um setor em pdf
 app.register_blueprint(bp_atualizar_servidor)  # atualiza um servidor
 app.register_blueprint(bp_arquivar_servidor)
-app.register_blueprint(bp_atualizar_servidor_status)
+app.register_blueprint(bp_ativar_servidor_status)
 app.register_blueprint(bp_buscar_servidores_arquivados)
 app.register_blueprint(bp_buscar_estagiarios)
 app.register_blueprint(bp_buscar_setor)
