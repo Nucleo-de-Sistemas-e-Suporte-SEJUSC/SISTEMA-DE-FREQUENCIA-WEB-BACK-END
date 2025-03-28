@@ -14,7 +14,17 @@ from routes.buscar_setor import bp_buscar_setor
 from auth import auth_bp, login_manager  # ✅ Importação correta
 
 app = Flask(__name__)
-CORS(app)
+
+CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
+
+# Adicionando os cabeçalhos CORS para todas as respostas
+@app.after_request
+def after_request(response):
+    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'  # Permitir o front-end
+    response.headers['Access-Control-Allow-Credentials'] = 'true'  # Permitir credenciais (cookies)
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'  # Métodos permitidos
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'  # Cabeçalhos permitidos
+    return response
 
 login_manager.init_app(app)
 app.secret_key = 'sa3fab861d0da4efd62c6f2aff0649b5e'
