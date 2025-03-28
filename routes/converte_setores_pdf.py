@@ -12,8 +12,8 @@ from decorador import roles_required
 bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
 
 @bp_converte_setor_pdf.route('/api/setores/pdf', methods=['POST'])
-# @login_required
-# @roles_required('admin','editor')
+@login_required
+@roles_required('admin','editor')
 def converte_setores_pdf():
     try:
         body = request.json or {}

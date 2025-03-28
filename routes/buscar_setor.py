@@ -8,8 +8,8 @@ from decorador import roles_required   # Importa o decorador personalizado
 bp_buscar_setor = Blueprint('bp_buscar_setor', __name__)
 
 @bp_buscar_setor.route("/api/buscar_setor", methods=["GET"])
-# @login_required
-# @roles_required('admin','editor')
+@login_required
+@roles_required('admin','editor')
 def buscar_setor():
     try:
         # Conexão com o banco de dados

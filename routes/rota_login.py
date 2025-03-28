@@ -24,16 +24,11 @@ class Usuario(UserMixin):
         self.nome = nome
         self.role = role
         self.senha = senha
+   
+    def get_id(self):
+        return self.id
 
-@login_manager.user_loader
-def load_user(user_id):
-    cursor = conexao.cursor(dictionary=True)
-    query = "SELECT id, matricula, nome, role, senha FROM usuarios WHERE id = %s"
-    cursor.execute(query, (user_id,))
-    result = cursor.fetchone()
-    if result:
-        return Usuario(result['id'], result['matricula'], result['nome'], result['role'], result['senha'])
-    return None
+
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
@@ -49,12 +44,11 @@ def login():
     if not usuario_data:
         return jsonify({"erro": "Usuário não encontrado!"}), 404
 
-    from werkzeug.security import check_password
-    if not check_password(usuario_data['senha_hash'], senha):
+    if usuario_data['senha'] != senha:
         return jsonify({"erro": "Senha inválida!"}), 401
 
     # Criar instância do usuário e realizar login
-    usuario = Usuario(usuario_data['id'], usuario_data['matricula'], usuario_data['nome'], usuario_data['role'], usuario_data['senha_hash'])
+    usuario = Usuario(usuario_data['id'], usuario_data['matricula'], usuario_data['nome'], usuario_data['role'], usuario_data['senha'])
     login_user(usuario)
 
     return jsonify({"mensagem": "Login realizado com sucesso!", "nome": usuario.nome, "role": usuario.role}), 200

@@ -25,6 +25,9 @@ class Usuario(UserMixin):
         self.role = role
         self.senha = senha
 
+    def get_id(self):
+        return self.id
+
 @login_manager.user_loader
 def load_user(user_id):
     cursor = conexao.cursor(dictionary=True)
@@ -49,8 +52,7 @@ def login():
     if not usuario_data:
         return jsonify({"erro": "Usuário não encontrado!"}), 404
 
-    from werkzeug.security import check_password_hash
-    if not check_password_hash(usuario_data['senha'], senha):
+    if usuario_data['senha'] != senha:
         return jsonify({"erro": "Senha inválida!"}), 401
 
     # Criar instância do usuário e realizar login
