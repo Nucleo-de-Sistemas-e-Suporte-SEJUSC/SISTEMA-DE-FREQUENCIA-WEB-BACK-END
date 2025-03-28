@@ -1,6 +1,6 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 from mysql.connector import Error
-from routes import bp as routes_bp  # Importa o Blueprint definido em routes/__init__.py
+from routes import bp as routes_bp
 from routes.criar_servidor import bp_criar_servidor
 from routes.converte_servidor_pdf import bp_converte_servidor_pdf
 from routes.converte_setores_pdf import bp_converte_setor_pdf
@@ -11,33 +11,30 @@ from routes.ativar_servidor import bp_ativar_servidor_status
 from routes.buscar_arquivados import bp_buscar_servidores_arquivados
 from routes.buscar_estagiarios import bp_buscar_estagiarios
 from routes.buscar_setor import bp_buscar_setor
-from auth import auth_bp
-from flask_login import LoginManager
+from auth import auth_bp, login_manager  # ✅ Importação correta
 
 app = Flask(__name__)
-CORS(app)  # Habilita o CORS na aplicação
+CORS(app)
 
-# Configuração do Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)  # Associa o LoginManager ao aplicativo Flask
-app.secret_key = 'sa3fab861d0da4efd62c6f2aff0649b5e'  # Configuração da chave secreta para sessões
+login_manager.init_app(app)
+app.secret_key = 'sa3fab861d0da4efd62c6f2aff0649b5e'
 
 # Registro dos Blueprints
-app.register_blueprint(routes_bp)  # busca todos os servidores
-app.register_blueprint(bp_criar_servidor)  # cria um servidor
-app.register_blueprint(bp_converte_servidor_pdf)  # converte um servidor em pdf
-app.register_blueprint(bp_converte_setor_pdf)  # converte um setor em pdf
-app.register_blueprint(bp_atualizar_servidor)  # atualiza um servidor
+app.register_blueprint(routes_bp)
+app.register_blueprint(bp_criar_servidor)
+app.register_blueprint(bp_converte_servidor_pdf)
+app.register_blueprint(bp_converte_setor_pdf)
+app.register_blueprint(bp_atualizar_servidor)
 app.register_blueprint(bp_arquivar_servidor)
 app.register_blueprint(bp_ativar_servidor_status)
 app.register_blueprint(bp_buscar_servidores_arquivados)
 app.register_blueprint(bp_buscar_estagiarios)
 app.register_blueprint(bp_buscar_setor)
-app.register_blueprint(auth_bp)  # Rotas de autenticação
+app.register_blueprint(auth_bp)
 
 @app.route("/")
 def home():
-    return "Bem vindo ao sistema de frequencia do rh!"
+    return "Bem-vindo ao sistema de frequência do RH!"
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=3000, debug=True)

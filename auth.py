@@ -1,67 +1,73 @@
 from flask import Blueprint, request, jsonify
-from flask_login import LoginManager, UserMixin, login_user, logout_user
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required
 import mysql.connector
 
-# Configuração do Flask-Login
+auth_bp = Blueprint("auth", __name__)
+
+# 🔹 Criando o login_manager DENTRO do auth.py
 login_manager = LoginManager()
 
-# Blueprint para as rotas de autenticação
-auth_bp = Blueprint('auth', __name__)
+def get_db_connection():
+    return mysql.connector.connect(
+        host="12.90.1.2",
+        user="devop",
+        password="DEVsjc@2025",
+        database="sistema_frequenciarh"
+    )
 
-# Conexão com o banco de dados MySQL
-conexao = mysql.connector.connect(
-    host="12.90.1.2",
-    user="devop",
-    password="DEVsjc@2025",
-    database="sistema_frequenciarh"
-)
-
-# Classe de Usuário para Flask-Login
 class Usuario(UserMixin):
-    def __init__(self, id, matricula, nome, role, senha):
+    def __init__(self, id, matricula, nome, role):
         self.id = id
         self.matricula = matricula
         self.nome = nome
         self.role = role
-        self.senha = senha
 
     def get_id(self):
-        return self.id
+        return str(self.id)
 
 @login_manager.user_loader
 def load_user(user_id):
+    conexao = get_db_connection()
     cursor = conexao.cursor(dictionary=True)
-    query = "SELECT id, matricula, nome, role, senha FROM usuarios WHERE id = %s"
-    cursor.execute(query, (user_id,))
-    result = cursor.fetchone()
-    if result:
-        return Usuario(result['id'], result['matricula'], result['nome'], result['role'], result['senha'])
+
+    cursor.execute("SELECT id, matricula, nome, role FROM usuarios WHERE id = %s", (user_id,))
+    usuario_data = cursor.fetchone()
+
+    cursor.close()
+    conexao.close()
+
+    if usuario_data:
+        return Usuario(usuario_data["id"], usuario_data["matricula"], usuario_data["nome"], usuario_data["role"])
     return None
 
-@auth_bp.route('/login', methods=['POST'])
+@auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.json
-    matricula = data.get('matricula')
-    senha = data.get('senha')
+    matricula = data.get("matricula")
+    senha = data.get("senha")
 
+    conexao = get_db_connection()
     cursor = conexao.cursor(dictionary=True)
-    query = "SELECT id, matricula, nome, senha, role FROM usuarios WHERE matricula = %s"
-    cursor.execute(query, (matricula,))
+
+    cursor.execute("SELECT id, matricula, nome, senha, role FROM usuarios WHERE matricula = %s", (matricula,))
     usuario_data = cursor.fetchone()
+
+    cursor.close()
+    conexao.close()
 
     if not usuario_data:
         return jsonify({"erro": "Usuário não encontrado!"}), 404
 
-    if usuario_data['senha'] != senha:
+    if usuario_data["senha"] != senha:
         return jsonify({"erro": "Senha inválida!"}), 401
 
-    # Criar instância do usuário e realizar login
-    usuario = Usuario(usuario_data['id'], usuario_data['matricula'], usuario_data['nome'], usuario_data['role'], usuario_data['senha'])
-    login_user(usuario)
+    usuario = Usuario(usuario_data["id"], usuario_data["matricula"], usuario_data["nome"], usuario_data["role"])
+    login_user(usuario, remember=True)
 
     return jsonify({"mensagem": "Login realizado com sucesso!", "nome": usuario.nome, "role": usuario.role}), 200
 
-@auth_bp.route('/logout', methods=['POST'])
+@auth_bp.route("/logout", methods=["POST"])
+@login_required
 def logout():
     logout_user()
     return jsonify({"mensagem": "Logout realizado com sucesso!"}), 200

@@ -50,5 +50,19 @@ def login():
     # Criar instância do usuário e realizar login
     usuario = Usuario(usuario_data['id'], usuario_data['matricula'], usuario_data['nome'], usuario_data['role'], usuario_data['senha'])
     login_user(usuario)
+    @login_manager.user_loader
+
+def load_user(user_id):
+    cursor = conexao.cursor(dictionary=True)
+    query = "SELECT id, matricula, nome, senha, role FROM usuarios WHERE id = %s"
+    cursor.execute(query, (user_id,))
+    usuario_data = cursor.fetchone()
+    
+    if usuario_data:
+        return Usuario(usuario_data['id'], usuario_data['matricula'], usuario_data['nome'], usuario_data['role'], usuario_data['senha'])
+    
+    return None
+
+    login_user(usuario, remember=True)  # Permite que o login seja mantido
 
     return jsonify({"mensagem": "Login realizado com sucesso!", "nome": usuario.nome, "role": usuario.role}), 200
