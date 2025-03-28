@@ -3,13 +3,16 @@ from mysql.connector import Error
 from conection_mysql import connect_mysql
 from flask_login import login_required  # Importa diretamente do Flask-Login
 from decorador import roles_required   # Importa o decorador personalizado
-
+from flask_cors import cross_origin
 
 bp_buscar_setor = Blueprint('bp_buscar_setor', __name__)
 
 @bp_buscar_setor.route("/api/buscar_setor", methods=["GET"])
+@cross_origin(supports_credentials=True)  # Permite o compartilhamento de credenciais
 @roles_required('admin','editor')
 def buscar_setor():
+
+    token = request.cookies.get('food')
     try:
         # Conexão com o banco de dados
         conexao = connect_mysql()
