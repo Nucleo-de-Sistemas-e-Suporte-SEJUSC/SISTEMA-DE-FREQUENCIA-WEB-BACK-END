@@ -15,8 +15,8 @@ from decorador import roles_required
 bp_converte_servidor_pdf = Blueprint('bp_converte_servidor_pdf', __name__)
 
 @bp_converte_servidor_pdf.route('/api/servidores/pdf', methods=['POST'])
-@login_required
-@roles_required('admin','editor')
+# @login_required
+# @roles_required('admin','editor')
 def converte_servidor_pdf():
     try:
         body = request.json or {}

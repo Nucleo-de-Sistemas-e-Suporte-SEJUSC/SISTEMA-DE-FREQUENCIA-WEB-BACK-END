@@ -8,8 +8,8 @@ from flask_cors import cross_origin
 bp_buscar_setor = Blueprint('bp_buscar_setor', __name__)
 
 @bp_buscar_setor.route("/api/buscar_setor", methods=["GET"])
-@cross_origin(supports_credentials=True)  # Permite o compartilhamento de credenciais
-@roles_required('admin','editor')
+# @cross_origin(supports_credentials=True)  # Permite o compartilhamento de credenciais
+# @roles_required('admin','editor')
 def buscar_setor():
 
     token = request.cookies.get('food')

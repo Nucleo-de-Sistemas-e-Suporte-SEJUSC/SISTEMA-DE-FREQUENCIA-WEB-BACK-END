@@ -7,8 +7,8 @@ from decorador import roles_required
 bp_ativar_servidor_status = Blueprint('bp_ativar_servidor_status', __name__)
 
 @bp_ativar_servidor_status.route('/api/servidores/<int:id>/atualizar-status', methods=['PATCH'])
-@login_required
-@roles_required('admin')
+# @login_required
+# @roles_required('admin')
 def atualizar_status_servidor(id):
     try:
         conexao = connect_mysql()

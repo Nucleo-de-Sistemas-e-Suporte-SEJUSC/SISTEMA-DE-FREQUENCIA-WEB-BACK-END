@@ -22,7 +22,7 @@ CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
 def after_request(response):
     response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'  # Permitir o front-end
     response.headers['Access-Control-Allow-Credentials'] = 'true'  # Permitir credenciais (cookies)
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'  # Métodos permitidos
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PATCH, OPTIONS'  # Métodos permitidos
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'  # Cabeçalhos permitidos
     return response
 

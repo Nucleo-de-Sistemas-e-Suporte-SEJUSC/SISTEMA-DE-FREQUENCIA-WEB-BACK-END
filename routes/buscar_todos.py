@@ -16,8 +16,8 @@ def timedelta_to_str(td):
 
 
 @bp.route("/api/servidores", methods=["GET"])
-@login_required  
-@roles_required('admin', 'editor') 
+# @login_required  
+# @roles_required('admin', 'editor') 
 def buscar_servidores():
     try:
         conexao = connect_mysql()
