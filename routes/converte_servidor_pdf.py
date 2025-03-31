@@ -1,22 +1,16 @@
 from utils.convert_to_pdf import convert_to_pdf
 from utils.muda_texto_documento import muda_texto_documento
 from utils.formata_datas import data_atual, pega_final_de_semana, pega_quantidade_dias_mes
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from conection_mysql import connect_mysql
 from mysql.connector import Error
 from docx import Document
-from datetime import datetime, date
+from datetime import date
 import os
-from flask_login import login_required  # Importa diretamente do Flask-Login
-from decorador import roles_required 
- # Importa o decorador personalizado
-
 
 bp_converte_servidor_pdf = Blueprint('bp_converte_servidor_pdf', __name__)
 
 @bp_converte_servidor_pdf.route('/api/servidores/pdf', methods=['POST'])
-# @login_required
-# @roles_required('admin','editor')
 def converte_servidor_pdf():
     try:
         body = request.json or {}
@@ -32,7 +26,6 @@ def converte_servidor_pdf():
 
         mes_body = body.get('mes')
         data_ano_mes_atual = data_atual(mes_body)
-        print(data_ano_mes_atual)
         mes_por_extenso = data_ano_mes_atual['mes']
         mes_numerico = data_ano_mes_atual['mes_numerico']
         ano = data_ano_mes_atual['ano']
@@ -50,65 +43,50 @@ def converte_servidor_pdf():
             conexao.close()
             return jsonify({'erro': 'Nenhum servidor encontrado'}), 404
 
-        resultados = []
         template_path = 'FREQUÊNCIA_MENSAL.docx'
+        
+        # Processa apenas o primeiro servidor (ou ajuste para múltiplos arquivos)
+        servidor = servidores[0]
+        
+        doc = Document(template_path)
+        cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor)
 
-        for servidor in servidores:
-            try:
-                doc = Document(template_path)
-                cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor)
+        troca_de_dados = {
+            "CAMPO SETOR": servidor['setor'],
+            "CAMPO MÊS": mes_por_extenso,
+            "CAMPO NOME": servidor['nome'],
+            "CAMPO ANO": str(ano),
+            "CAMPO HORARIO": str(servidor['horario']),
+            "CAMPO ENTRADA": str(servidor['horarioentrada']),
+            "CAMPO SAÍDA": str(servidor['horariosaida']),
+            "CAMPO MATRÍCULA": str(servidor['matricula']),
+            "CAMPO CARGO": servidor['cargo'],
+            "CAMPO FUNÇÃO": str(servidor['funcao']),
+        }
 
-                troca_de_dados = {
-                    "CAMPO SETOR": servidor['setor'],
-                    "CAMPO MÊS": mes_por_extenso,
-                    "CAMPO NOME": servidor['nome'],
-                    "CAMPO ANO": str(ano),
-                    "CAMPO HORARIO": str(servidor['horario']),
-                    "CAMPO ENTRADA": str(servidor['horarioentrada']),
-                    "CAMPO SAÍDA": str(servidor['horariosaida']),
-                    "CAMPO MATRÍCULA": str(servidor['matricula']),
-                    "CAMPO CARGO": servidor['cargo'],
-                    "CAMPO FUNÇÃO": str(servidor['funcao']),
-                }
+        for placeholder, valor in troca_de_dados.items():
+            muda_texto_documento(doc, placeholder, valor)
 
-                for placeholder, valor in troca_de_dados.items():
-                    muda_texto_documento(doc, placeholder, valor)
+        caminho_pasta = f"setor/{servidor['setor']}/servidor/{mes_por_extenso}/{servidor['nome']}"
+        os.makedirs(caminho_pasta, exist_ok=True)
 
-                caminho_pasta = f"setor/{servidor['setor']}/servidor/{mes_por_extenso}/{servidor['nome']}"
-                os.makedirs(caminho_pasta, exist_ok=True)
+        nome_base = f"{servidor['nome']}_FREQUÊNCIA_MENSAL"
+        docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
+        pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
 
-                nome_base = f"{servidor['nome']}_FREQUÊNCIA_MENSAL"
-                docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
-                pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
-
-                doc.save(docx_path)
-                convert_to_pdf(docx_path, pdf_path)
-
-                resultados.append({
-                    'nome': servidor['nome'],
-                    'matricula': servidor['matricula'],
-                    'documento': f"{nome_base}.pdf",
-                    'caminho': pdf_path
-                })
-
-            except Exception as e:
-                resultados.append({
-                    'nome': servidor.get('nome', 'Desconhecido'),
-                    'erro': str(e)
-                })
+        doc.save(docx_path)
+        convert_to_pdf(docx_path, pdf_path)
 
         conexao.close()
-        return jsonify({
-            'mensagem': 'Processamento concluído',
-            'resultados': resultados,
-            'total_processados': len(servidores),
-            'sucessos': len([r for r in resultados if 'erro' not in r])
-        }), 200
 
+        # Retorna o arquivo PDF para download usando send_file
+        return send_file(pdf_path, as_attachment=True, download_name=f"{nome_base}.pdf")
+    
     except Exception as exception:
         if 'conexao' in locals():
             conexao.close()
         return jsonify({'erro': f'Erro no servidor: {str(exception)}'}), 500
+
 
 def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor):
     linha_inicial = 8
@@ -140,5 +118,5 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor
                         row.cells[5].text = "FÉRIAS"
                         row.cells[9].text = "FÉRIAS"
                         row.cells[13].text = "FÉRIAS"
-        else:
-            print(f"A tabela não tem linhas suficientes para os {quantidade_dias_no_mes} dias do mês.")
+                else:
+                    return(f"A tabela não tem linhas suficientes para os {quantidade_dias_no_mes} dias do mês.")

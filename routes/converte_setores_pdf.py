@@ -7,22 +7,21 @@ from docx import Document
 from datetime import datetime, date
 import os
 from flask_login import login_required
-from decorador import roles_required 
+from decorador import roles_required
+from flask import send_file
+import shutil
 
 bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
 
 @bp_converte_setor_pdf.route('/api/setores/pdf', methods=['POST'])
-# @login_required
-# @roles_required('admin','editor')
 def converte_setores_pdf():
     try:
         body = request.json or {}
-        setores_nomes = body.get('setores', [])  # Agora recebe array de NOMES dos setores
+        setores_nomes = body.get('setores', [])
         
         if not setores_nomes:
             return jsonify({'erro': 'Nenhum setor selecionado'}), 400
 
-        # Verifica se é uma lista de strings não vazias
         if not all(isinstance(nome, str) and nome.strip() for nome in setores_nomes):
             return jsonify({'erro': 'Nomes de setores inválidos'}), 400
 
@@ -36,7 +35,6 @@ def converte_setores_pdf():
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
-        # Busca diretamente os funcionários dos setores especificados
         placeholders = ','.join(['%s'] * len(setores_nomes))
         query_funcionarios = f"""
             SELECT * FROM funcionarios 
@@ -54,13 +52,15 @@ def converte_setores_pdf():
             }), 404
 
         resultados = []
-        template_path = 'FREQUÊNCIA_MENSAL.docx'
-        setores_processados = set()  # Para armazenar os setores encontrados
+        
+        # Cria uma pasta temporária para armazenar os PDFs gerados
+        pasta_temp = f"temp/{mes_por_extenso}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        os.makedirs(pasta_temp, exist_ok=True)
 
         for servidor in servidores:
             try:
-                setores_processados.add(servidor['setor'])  # Adiciona o setor do funcionário
-                
+                # Processa cada servidor
+                template_path = 'FREQUÊNCIA_MENSAL.docx'
                 doc = Document(template_path)
                 
                 # Preenche os dias do mês
@@ -109,14 +109,10 @@ def converte_setores_pdf():
                 for placeholder, valor in troca_de_dados.items():
                     muda_texto_documento(doc, placeholder, valor)
 
-                # Cria a estrutura de pastas
-                caminho_pasta = f"setor/{servidor['setor']}/servidor/{mes_por_extenso}/{servidor['nome']}"
-                os.makedirs(caminho_pasta, exist_ok=True)
-
                 # Gera os arquivos
                 nome_base = f"{servidor['nome']}_FREQUÊNCIA_MENSAL"
-                docx_path = os.path.join(caminho_pasta, f"{nome_base}.docx")
-                pdf_path = os.path.join(caminho_pasta, f"{nome_base}.pdf")
+                docx_path = os.path.join(pasta_temp, f"{nome_base}.docx")
+                pdf_path = os.path.join(pasta_temp, f"{nome_base}.pdf")
 
                 doc.save(docx_path)
                 convert_to_pdf(docx_path, pdf_path)
@@ -137,14 +133,13 @@ def converte_setores_pdf():
                 })
 
         conexao.close()
-        return jsonify({
-            'mensagem': 'Processamento concluído',
-            'setores_solicitados': setores_nomes,
-            'setores_encontrados': list(setores_processados),
-            'resultados': resultados,
-            'total_processados': len(servidores),
-            'sucessos': len([r for r in resultados if 'erro' not in r])
-        }), 200
+
+        # Compacta todos os PDFs em um único arquivo ZIP
+        zip_path = f"{docx_path,pdf_path}.zip"
+        shutil.make_archive(pasta_temp, 'zip', pasta_temp)
+
+        # Retorna o arquivo ZIP para download
+        return send_file(zip_path, as_attachment=True, download_name=f"setores_{mes_por_extenso}.zip")
 
     except Exception as exception:
         if 'conexao' in locals():
