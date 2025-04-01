@@ -18,7 +18,7 @@ def converte_setores_pdf():
     try:
         body = request.json or {}
         setores_nomes = body.get('setores', [])
-        
+
         if not setores_nomes:
             return jsonify({'erro': 'Nenhum setor selecionado'}), 400
 
@@ -51,10 +51,9 @@ def converte_setores_pdf():
                 'setores_procurados': setores_nomes
             }), 404
 
-        
         resultados = []
-        
-        # Cria uma pasta temporária para armazenar os PDFs gerados
+
+        # Cria uma pasta temporária para armazenar os documentos gerados
         pasta_temp = f"temp/{mes_por_extenso}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
         os.makedirs(pasta_temp, exist_ok=True)
 
@@ -63,22 +62,22 @@ def converte_setores_pdf():
                 # Processa cada servidor
                 template_path = 'FREQUÊNCIA_MENSAL.docx'
                 doc = Document(template_path)
-                
+
                 # Preenche os dias do mês
                 for table in doc.tables:
                     if len(table.rows) >= 8 + quantidade_dias_no_mes:
                         for i in range(quantidade_dias_no_mes):
                             dia = i + 1
                             dia_semana = pega_final_de_semana(ano, mes_numerico, dia)
-                            row = table.rows[8 + i] 
+                            row = table.rows[8 + i]
                             row.cells[0].text = str(dia)
 
-                            if dia_semana == 5:    # Sábado
+                            if dia_semana == 5:  # Sábado
                                 row.cells[2].text = "SÁBADO"
                                 row.cells[5].text = "SÁBADO"
                                 row.cells[9].text = "SÁBADO"
                                 row.cells[13].text = "SÁBADO"
-                            elif dia_semana == 6:   # Domingo
+                            elif dia_semana == 6:  # Domingo
                                 row.cells[2].text = "DOMINGO"
                                 row.cells[5].text = "DOMINGO"
                                 row.cells[9].text = "DOMINGO"
@@ -132,11 +131,10 @@ def converte_setores_pdf():
                     'erro': str(e)
                 })
 
-
         conexao.close()
 
         # Compacta todos os PDFs em um único arquivo ZIP
-        zip_path = f"{docx_path,pdf_path}.zip"
+        zip_path = f"{pasta_temp}.zip"
         shutil.make_archive(pasta_temp, 'zip', pasta_temp)
 
         # Retorna o arquivo ZIP para download
