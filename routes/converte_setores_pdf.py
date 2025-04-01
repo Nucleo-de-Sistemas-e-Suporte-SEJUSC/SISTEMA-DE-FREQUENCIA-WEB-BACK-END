@@ -51,6 +51,7 @@ def converte_setores_pdf():
                 'setores_procurados': setores_nomes
             }), 404
 
+        
         resultados = []
         
         # Cria uma pasta temporária para armazenar os PDFs gerados
@@ -113,7 +114,6 @@ def converte_setores_pdf():
                 nome_base = f"{servidor['nome']}_FREQUÊNCIA_MENSAL"
                 docx_path = os.path.join(pasta_temp, f"{nome_base}.docx")
                 pdf_path = os.path.join(pasta_temp, f"{nome_base}.pdf")
-
                 doc.save(docx_path)
                 convert_to_pdf(docx_path, pdf_path)
 
@@ -131,6 +131,7 @@ def converte_setores_pdf():
                     'setor': servidor.get('setor', 'Desconhecido'),
                     'erro': str(e)
                 })
+
 
         conexao.close()
 

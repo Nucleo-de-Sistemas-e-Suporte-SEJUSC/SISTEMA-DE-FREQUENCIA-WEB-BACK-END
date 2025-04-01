@@ -11,7 +11,10 @@ from routes.ativar_servidor import bp_ativar_servidor_status
 from routes.buscar_arquivados import bp_buscar_servidores_arquivados
 from routes.buscar_estagiarios import bp_buscar_estagiarios
 from routes.buscar_setor import bp_buscar_setor
+from routes.listar_pdfs import bp_listar_pdfs
+from routes.visualizar_pdf import bp_visualizar_pdf
 from auth import auth_bp, login_manager  # ✅ Importação correta
+import os
 
 app = Flask(__name__)
 
@@ -40,6 +43,8 @@ app.register_blueprint(bp_ativar_servidor_status)
 app.register_blueprint(bp_buscar_servidores_arquivados)
 app.register_blueprint(bp_buscar_estagiarios)
 app.register_blueprint(bp_buscar_setor)
+app.register_blueprint(bp_listar_pdfs)
+app.register_blueprint(bp_visualizar_pdf)
 app.register_blueprint(auth_bp)
 
 @app.route("/")
