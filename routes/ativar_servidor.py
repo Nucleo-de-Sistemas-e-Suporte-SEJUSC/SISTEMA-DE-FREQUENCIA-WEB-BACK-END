@@ -18,7 +18,6 @@ def atualizar_status_servidor(id):
         verifica_se_servidor_existe = "SELECT * FROM funcionarios WHERE id = %s"
         cursor.execute(verifica_se_servidor_existe, (id,))
         servidor = cursor.fetchone()
-        print(servidor)
 
         if servidor is None:
             conexao.close()
@@ -36,7 +35,10 @@ def atualizar_status_servidor(id):
         cursor.execute(atualizar_status, (novo_status, id))
         conexao.commit()
         conexao.close()
-
-        return jsonify({'mensagem': 'Status do servidor atualizado com sucesso'}), 200
+        print(servidor)
+        return jsonify({'mensagem': 'Status do servidor atualizado com sucesso', "servidor_ativado": {
+            "nome": servidor['nome'],
+            "setor": servidor['setor'],
+        }}), 200
     except Exception as exception:
         return jsonify({'erro': f'Erro ao conectar ao banco de dados: {str(exception)}'}), 500
