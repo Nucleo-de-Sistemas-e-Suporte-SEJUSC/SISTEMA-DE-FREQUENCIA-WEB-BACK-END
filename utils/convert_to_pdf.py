@@ -6,7 +6,6 @@ from docx import Document
 def convert_to_pdf(docx_path, pdf_path):
     try:
         pythoncom.CoInitialize()
-
         word = win32com.client.Dispatch("Word.Application")
         word.visible = False
         

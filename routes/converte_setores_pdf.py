@@ -1,10 +1,10 @@
-from utils.convert_to_pdf import convert_to_pdf
 from utils.muda_texto_documento import muda_texto_documento
 from utils.formata_datas import data_atual, pega_final_de_semana, pega_quantidade_dias_mes
 from flask import Blueprint, request, jsonify, send_file
 from conection_mysql import connect_mysql
 from docx import Document
 from datetime import datetime, date
+from utils.convert_to_pdf import convert_to_pdf
 import os
 import re
 import shutil
@@ -86,8 +86,10 @@ def converte_setores_pdf():
 
                 pasta_temp = criar_pasta_temp(mes_por_extenso)
                 resultados = []
-
+                # print(servidores)
                 for servidor in servidores:
+                    print("Servidoooor => ", servidor)
+                    
                     try:
                         # Verifica template
                         if not os.path.exists(TEMPLATE_PATH):
@@ -125,7 +127,6 @@ def converte_setores_pdf():
                                         if ferias_inicio <= data_dia <= ferias_final and dia_semana not in [5, 6]:
                                             for cell_index in CELULAS_DIAS:
                                                 row.cells[cell_index].text = "FÉRIAS"
-
                         # Substituição de placeholders (não alterada)
                         campos = {
                             "CAMPO SETOR": servidor.get('setor', ''),
@@ -153,25 +154,32 @@ def converte_setores_pdf():
                             pdf_path = os.path.join(pasta_temp, f"{nome_base}.pdf")
 
                             doc.save(docx_path)
-                            try:
-                                convert_to_pdf(docx_path, pdf_path)
-                            except Exception as e:
-                                logger.error(f"Erro ao converter para PDF: {str(e)}")
-                                # Tentativa alternativa de conversão
-                                try:
-                                    from docx2pdf import convert
-                                    convert(docx_path, pdf_path)
-                                except Exception as e2:
-                                    logger.error(f"Falha na segunda tentativa de conversão: {str(e2)}")
-                                    raise 
-
+                            print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA") 
+                           
+                            convert_to_pdf(docx_path, pdf_path)
+                            
+                                    
                         resultados.append({
-                            'nome': servidor['nome'],
-                            'matricula': servidor['matricula'],
-                            'setor': servidor['setor'],
-                            'documento': f"{nome_base}.pdf"
+                                'nome': servidor['nome'],
+                                'matricula': servidor['matricula'],
+                                'setor': servidor['setor'],
+                                'documento': f"{nome_base}.pdf"
                         })
 
+                        zip_path = f"{pasta_temp}.zip"
+                        shutil.make_archive(pasta_temp, 'zip', pasta_temp)
+
+                        
+                        send_file(
+                            zip_path,
+                            as_attachment=True,
+                            download_name=f"setores_{mes_por_extenso}.zip",
+                            mimetype='application/zip'
+                        )
+
+                        return jsonify({
+                            'mensagem': 'Arquivos gerados com sucesso',
+                        })
                     except Exception as e:
                         logger.error(f"Erro processando {servidor.get('nome')}: {str(e)}")
                         resultados.append({
@@ -180,16 +188,8 @@ def converte_setores_pdf():
                             'erro': str(e)
                         })
 
-                # Cria arquivo ZIP (não alterada)
-                zip_path = f"{pasta_temp}.zip"
-                shutil.make_archive(pasta_temp, 'zip', pasta_temp)
+    #             # Cria arquivo ZIP (não alterada)
 
-                return send_file(
-                    zip_path,
-                    as_attachment=True,
-                    download_name=f"setores_{mes_por_extenso}.zip",
-                    mimetype='application/zip'
-                )
 
         except Exception as e:
             logger.error(f"Erro de banco de dados: {str(e)}")
