@@ -20,7 +20,6 @@ def arquivar_servidor(id):
         verifica_se_servidor_existe = "SELECT * FROM funcionarios WHERE id = %s"
         cursor.execute(verifica_se_servidor_existe, (id,))
         servidor = cursor.fetchone()
-        print(servidor)
 
         if servidor is None:
             conexao.close()
@@ -32,11 +31,14 @@ def arquivar_servidor(id):
             SET status = 'arquivado'
             WHERE id = %s
         """
-        print(arquivar_servidor)
         cursor.execute(arquivar_servidor, (id,))
         conexao.commit()
         conexao.close()
-
-        return jsonify({'mensagem': 'Servidor arquivado com sucesso'}), 200
+    
+        return jsonify({'mensagem': 'Servidor arquivado com sucesso', 'servidor_arquivado': {
+            'nome': servidor['nome'] ,
+            'setor': servidor['setor'] ,
+        } ,
+        }), 200
     except Exception as exception:
         return jsonify({'erro': f'Erro ao conectar ao banco de dados: {str(exception)}'}), 500
