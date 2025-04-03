@@ -16,14 +16,33 @@ def converte_servidor_pdf():
         body = request.json or {}
         funcionarios_id = body.get('funcionarios', [])
         
+        # Conexão com o banco de dados
+        conexao = connect_mysql()
+        cursor = conexao.cursor(dictionary=True)
+
+        # Verifica se IDs foram fornecidos; caso contrário, busca todos os funcionários
         if not funcionarios_id:
-            return jsonify({'erro': 'Nenhum funcionário selecionado'}), 400
+            query = "SELECT * FROM funcionarios"
+            cursor.execute(query)
+        else:
+            try:
+                ids = [int(id) for id in funcionarios_id]
+            except ValueError:
+                conexao.close()
+                return jsonify({'erro': 'IDs inválidos'}), 400
 
-        try:
-            ids = [int(id) for id in funcionarios_id]
-        except ValueError:
-            return jsonify({'erro': 'IDs inválidos'}), 400
+            placeholders = ','.join(['%s'] * len(ids))
+            query = f"SELECT * FROM funcionarios WHERE id IN ({placeholders})"
+            cursor.execute(query, ids)
 
+        servidores = cursor.fetchall()
+
+        # Verifica se há servidores retornados
+        if not servidores:
+            conexao.close()
+            return jsonify({'erro': 'Nenhum servidor encontrado'}), 404
+
+        # Processa informações do mês
         mes_body = body.get('mes')
         data_ano_mes_atual = data_atual(mes_body)
         mes_por_extenso = data_ano_mes_atual['mes']
@@ -31,61 +50,55 @@ def converte_servidor_pdf():
         ano = data_ano_mes_atual['ano']
         quantidade_dias_no_mes = pega_quantidade_dias_mes(ano, mes_numerico)
 
-        conexao = connect_mysql()
-        cursor = conexao.cursor(dictionary=True)
-
-        placeholders = ','.join(['%s'] * len(ids))
-        query = f"SELECT * FROM funcionarios WHERE id IN ({placeholders})"
-        cursor.execute(query, ids)
-        servidores = cursor.fetchall()
-
-        if not servidores:
-            conexao.close()
-            return jsonify({'erro': 'Nenhum servidor encontrado'}), 404
-
         template_path = 'FREQUÊNCIA_MENSAL.docx'
-        
-        # Processa apenas o primeiro servidor (ou ajuste para múltiplos arquivos)
-        servidor = servidores[0]
-        
-        doc = Document(template_path)
-        cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor)
+        arquivos_gerados = []
 
-        troca_de_dados = {
-            "CAMPO SETOR": servidor['setor'],
-            "CAMPO MÊS": mes_por_extenso,
-            "CAMPO NOME": servidor['nome'],
-            "CAMPO ANO": str(ano),
-            "CAMPO HORARIO": str(servidor['horario']),
-            "CAMPO ENTRADA": str(servidor['horarioentrada']),
-            "CAMPO SAÍDA": str(servidor['horariosaida']),
-            "CAMPO MATRÍCULA": str(servidor['matricula']),
-            "CAMPO CARGO": servidor['cargo'],
-            "CAMPO FUNÇÃO": str(servidor['funcao']),
-        }
+        # Gera PDFs para cada servidor
+        for servidor in servidores:
+            doc = Document(template_path)
+            cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor)
 
-        for placeholder, valor in troca_de_dados.items():
-            muda_texto_documento(doc, placeholder, valor)
+            troca_de_dados = {
+                "CAMPO SETOR": servidor['setor'],
+                "CAMPO MÊS": mes_por_extenso,
+                "CAMPO NOME": servidor['nome'],
+                "CAMPO ANO": str(ano),
+                "CAMPO HORARIO": str(servidor.get('horario', '')),
+                "CAMPO ENTRADA": str(servidor.get('horarioentrada', '')),
+                "CAMPO SAÍDA": str(servidor.get('horariosaida', '')),
+                "CAMPO MATRÍCULA": str(servidor.get('matricula', '')),
+                "CAMPO CARGO": servidor.get('cargo', ''),
+                "CAMPO FUNÇÃO": str(servidor.get('funcao', '')),
+            }
 
-        caminho_pasta = f"setor/{servidor['setor']}/servidor/{mes_por_extenso}/{servidor['nome']}"
-        os.makedirs(caminho_pasta, exist_ok=True)
+            for placeholder, valor in troca_de_dados.items():
+                muda_texto_documento(doc, placeholder, valor)
 
-        nome_base = f"{servidor['nome']}_FREQUÊNCIA_MENSAL"
-        docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
-        pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
+            caminho_pasta = f"setor/{servidor['setor']}/servidor/{mes_por_extenso}/{servidor['nome']}"
+            os.makedirs(caminho_pasta, exist_ok=True)
 
-        doc.save(docx_path)
-        convert_to_pdf(docx_path, pdf_path)
+            nome_base = f"{servidor['nome']}_FREQUÊNCIA_MENSAL"
+            docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
+            pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
+
+            doc.save(docx_path)
+            convert_to_pdf(docx_path, pdf_path)
+
+            arquivos_gerados.append({
+                'servidor': servidor['nome'],
+                'pdf_path': pdf_path
+            })
 
         conexao.close()
 
-        # Retorna o arquivo PDF para download usando send_file
-        return send_file(pdf_path, as_attachment=True, download_name=f"{nome_base}.pdf")
+        # Retorna a lista de PDFs gerados
+        return jsonify({'arquivos_gerados': arquivos_gerados})
     
     except Exception as exception:
         if 'conexao' in locals():
             conexao.close()
         return jsonify({'erro': f'Erro no servidor: {str(exception)}'}), 500
+
 
 
 def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor):
