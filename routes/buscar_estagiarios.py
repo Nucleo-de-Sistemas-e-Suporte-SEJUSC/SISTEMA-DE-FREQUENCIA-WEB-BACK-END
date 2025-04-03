@@ -7,8 +7,8 @@ from decorador import roles_required
 bp_buscar_estagiarios = Blueprint('bp_buscar_estagiarios', __name__)
 
 @bp_buscar_estagiarios.route("/api/estagiarios", methods=["GET"])
-@login_required
-@roles_required('admin','editor')
+# @login_required
+# @roles_required('admin','editor')
 def buscar_estagiarios():
     try:
         conexao = connect_mysql()

@@ -5,12 +5,12 @@ from flask_login import login_required  # Importa diretamente do Flask-Login
 from decorador import roles_required   # Importa o decorador personalizado
 from flask_cors import cross_origin
 
-bp_buscar_setor = Blueprint('bp_buscar_setor', __name__)
+bp_buscar_setor_estagiario = Blueprint('bp_buscar_setor_estagiario', __name__)
 
-@bp_buscar_setor.route("/api/buscar_setor", methods=["GET"])
+@bp_buscar_setor_estagiario.route("/api/setor/estagiarios", methods=["GET"])
 # @cross_origin(supports_credentials=True)  # Permite o compartilhamento de credenciais
 # @roles_required('admin','editor')
-def buscar_setor():
+def buscar_setor_estagiario():
 
     token = request.cookies.get('food')
     try:
@@ -18,9 +18,9 @@ def buscar_setor():
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
         consulta_setores = """
-                SELECT setor, COUNT(*) AS quantidade, id
-                FROM funcionarios 
-                GROUP BY setor
+                SELECT lotacao, COUNT(*) AS quantidade, id
+                FROM estagiarios 
+                GROUP BY lotacao
             """
         cursor.execute(consulta_setores)
             

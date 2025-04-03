@@ -13,6 +13,7 @@ from routes.buscar_estagiarios import bp_buscar_estagiarios
 from routes.buscar_setor import bp_buscar_setor
 from routes.listar_pdfs import bp_listar_pdfs
 from routes.visualizar_pdf import bp_visualizar_pdf
+from routes.busca_setor_estagiario import bp_buscar_setor_estagiario
 from routes.historico_logs.criar_historico import bp_criar_historico
 from routes.historico_logs.buscar_historico import bp_buscar_historico
 from auth import auth_bp, login_manager  # ✅ Importação correta
@@ -49,6 +50,7 @@ app.register_blueprint(bp_listar_pdfs)
 app.register_blueprint(bp_visualizar_pdf)
 app.register_blueprint(bp_criar_historico)
 app.register_blueprint(bp_buscar_historico)
+app.register_blueprint(bp_buscar_setor_estagiario)
 app.register_blueprint(auth_bp)
 
 @app.route("/")

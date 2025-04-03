@@ -33,7 +33,7 @@ def buscar_servidores():
             return jsonify({"setores": setores}), 200
 
         # Consulta padrão para buscar servidores
-        consulta = "SELECT * FROM funcionarios WHERE 1=1"
+        consulta = "SELECT * FROM funcionarios WHERE status='ativo'"
         parametros = []
 
         # Filtros opcionais
