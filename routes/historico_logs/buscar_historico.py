@@ -10,7 +10,7 @@ def criar_historico():
         cursor = conexao.cursor(dictionary=True)
 
         historico_logs = """
-            SELECT * FROM historico_logs
+            SELECT * FROM historico_logs ORDER BY data_criacao DESC
 
         """
         cursor.execute(historico_logs)
