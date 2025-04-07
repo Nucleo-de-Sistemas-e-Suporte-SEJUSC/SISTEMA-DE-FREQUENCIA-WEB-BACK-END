@@ -18,9 +18,9 @@ def buscar_setor_estagiario():
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
         consulta_setores = """
-                SELECT lotacao, COUNT(*) AS quantidade, id
+                SELECT setor As lotacao, COUNT(*) AS quantidade, id
                 FROM estagiarios 
-                GROUP BY lotacao
+                GROUP BY setor
             """
         cursor.execute(consulta_setores)
             
