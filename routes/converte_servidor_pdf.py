@@ -73,7 +73,8 @@ def converte_servidor_pdf():
 
             for placeholder, valor in troca_de_dados.items():
                 muda_texto_documento(doc, placeholder, valor)
-
+            
+            print(mes_por_extenso)
             caminho_pasta = f"setor/{servidor['setor']}/servidor/{mes_por_extenso}/{servidor['nome']}"
             os.makedirs(caminho_pasta, exist_ok=True)
 
@@ -125,11 +126,13 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor
                     row.cells[13].text = "DOMINGO"
 
                 if servidor['feriasinicio'] and servidor['feriasfinal']:
+                    # Convert datetime to date if necessary
+                    ferias_inicio = servidor['feriasinicio'].date() if hasattr(servidor['feriasinicio'], 'date') else servidor['feriasinicio']
+                    ferias_final = servidor['feriasfinal'].date() if hasattr(servidor['feriasfinal'], 'date') else servidor['feriasfinal']
+                    
                     data_atual = date(ano, mes_numerico, dia)
-                    if servidor['feriasinicio'] <= data_atual <= servidor['feriasfinal'] and dia_semana not in [5, 6]:
+                    if ferias_inicio <= data_atual <= ferias_final and dia_semana not in [5, 6]:
                         row.cells[2].text = "FÉRIAS"
                         row.cells[5].text = "FÉRIAS"
                         row.cells[9].text = "FÉRIAS"
                         row.cells[13].text = "FÉRIAS"
-                else:
-                    return(f"A tabela não tem linhas suficientes para os {quantidade_dias_no_mes} dias do mês.")

@@ -34,14 +34,10 @@ def converte_setores_pf():
         cursor = conexao.cursor(dictionary=True)
 
         # Processa a data informada ou usa a data atual
-        if mes_body is not None:
-            data_ano_mes_atual = data_atual(mes_body)
-            mes_por_extenso = data_ano_mes_atual['mes']
-            mes_numerico = data_ano_mes_atual['mes_numerico']
-        else: 
-            data_ano_mes_atual = data_atual(mes_informado_pelo_usuario=None)
-            mes_por_extenso = data_ano_mes_atual['mes'] 
-            mes_numerico = data_ano_mes_atual['mes_numerico']
+        data_ano_mes_atual = data_atual(mes_body)  # Mesmo que mes_body seja None
+        mes_por_extenso = data_ano_mes_atual['mes']
+        mes_numerico = data_ano_mes_atual['mes_numerico']
+        ano = data_ano_mes_atual['ano']
             
         ano = data_ano_mes_atual['ano']
         quantidade_dias_no_mes = pega_quantidade_dias_mes(ano, mes_numerico)
@@ -57,6 +53,7 @@ def converte_setores_pf():
             conexao.close()
             return jsonify({'erro': 'Setor não encontrado'}), 404
 
+        print(mes_por_extenso)
         for setor in setores:
             caminho_pasta = f"setor/{setor['setor']}/servidor/{mes_por_extenso}/{setor['nome']}"
             os.makedirs(caminho_pasta, exist_ok=True)
@@ -111,10 +108,18 @@ def converte_setores_pf():
                         # Preenche férias se aplicável
                         ferias_inicio = setor.get('feriasinicio')
                         ferias_final = setor.get('feriasfinal')
-                        dia_atual = date(ano, mes_numerico, i + 1)
-                        if ferias_inicio and ferias_final and ferias_inicio <= dia_atual <= ferias_final and dia_semana not in [5, 6]:
-                            for j in [2, 5, 9, 13]:
-                                table.rows[linha_inicial + i].cells[j].text = "FÉRIAS"
+
+                        if ferias_inicio and ferias_final:
+                            # Converte datetime para date se necessário
+                            if isinstance(ferias_inicio, datetime):
+                                ferias_inicio = ferias_inicio.date()
+                            if isinstance(ferias_final, datetime):
+                                ferias_final = ferias_final.date()
+                            
+                            dia_atual = date(ano, mes_numerico, i + 1)
+                            if ferias_inicio <= dia_atual <= ferias_final and dia_semana not in [5, 6]:
+                                for j in [2, 5, 9, 13]:
+                                    table.rows[linha_inicial + i].cells[j].text = "FÉRIAS"
 
             doc.save(docx_path)
             convert_to_pdf(docx_path, pdf_path)
