@@ -1,11 +1,13 @@
 from utils.convert_to_pdf import convert_to_pdf
-from utils.muda_texto_documento import muda_texto_documento
 from utils.formata_datas import data_atual, pega_final_de_semana, pega_quantidade_dias_mes
 from flask import Blueprint, request, jsonify
 from conection_mysql import connect_mysql
 from mysql.connector import Error
 from docx import Document
 from datetime import datetime, date
+from docx.shared import Pt, Cm
+from docx.enum.table import WD_ROW_HEIGHT_RULE
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT  # Importa alinhamento de parágrafo
 import os
 
 bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
@@ -34,12 +36,11 @@ def converte_setores_pf():
         cursor = conexao.cursor(dictionary=True)
 
         # Processa a data informada ou usa a data atual
-        data_ano_mes_atual = data_atual(mes_body)  # Mesmo que mes_body seja None
+        data_ano_mes_atual = data_atual(mes_body)
         mes_por_extenso = data_ano_mes_atual['mes']
         mes_numerico = data_ano_mes_atual['mes_numerico']
         ano = data_ano_mes_atual['ano']
             
-        ano = data_ano_mes_atual['ano']
         quantidade_dias_no_mes = pega_quantidade_dias_mes(ano, mes_numerico)
 
         template_path = 'FREQUÊNCIA_MENSAL.docx'
@@ -53,7 +54,6 @@ def converte_setores_pf():
             conexao.close()
             return jsonify({'erro': 'Setor não encontrado'}), 404
 
-        print(mes_por_extenso)
         for setor in setores:
             caminho_pasta = f"setor/{setor['setor']}/servidor/{mes_por_extenso}/{setor['nome']}"
             os.makedirs(caminho_pasta, exist_ok=True)
@@ -64,53 +64,67 @@ def converte_setores_pf():
             # Criação do documento Word baseado no template
             doc = Document(template_path)
 
-            # Substitui os placeholders pelos valores reais ou uma string padrão se forem None
-            placeholders = {
-                "CAMPO SETOR": str(setor.get('setor', "SEM DADOS")),
-                "CAMPO MÊS": mes_por_extenso,
-                "CAMPO ANO": str(ano),
-                "CAMPO NOME": str(setor.get('nome', "SEM DADOS")),
-                "CAMPO MATRÍCULA": str(setor.get('matricula', "SEM DADOS")),
-                "CAMPO CARGO": str(setor.get('cargo', "SEM DADOS")),
-                "CAMPO FUNÇÃO": str(setor.get('funcao', "SEM DADOS")),
-                "CAMPO HORARIO": str(setor.get('horario', "SEM DADOS")),
-                "CAMPO ENTRADA": str(setor.get('horarioentrada', "SEM DADOS")),
-                "CAMPO SAÍDA": str(setor.get('horariosaida', "SEM DADOS")),
-                "FERIAS INICIO": str(setor.get('feriasinicio', "")),
-                "FERIAS TERMINO": str(setor.get('feriasfinal', "")),
-            }
+            # Ajusta as margens do documento para maximizar espaço na página
+            section = doc.sections[0]
+            section.top_margin = Cm(1)       # Margem superior: 1 cm
+            section.bottom_margin = Cm(1)    # Margem inferior: 1 cm
+            section.left_margin = Cm(1)      # Margem esquerda: 1 cm
+            section.right_margin = Cm(1)     # Margem direita: 1 cm
+
+            linha_inicial = 9  # Linha onde começam os dias no template
 
             for table in doc.tables:
+                table.autofit = False  # Desativa ajuste automático da tabela
+                
                 for row in table.rows:
+                    row.height = Cm(0.5)  # Altura fixa de 0.5 cm (compactação)
+                    row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+                    
                     for cell in row.cells:
+                        cell.width = Cm(1.5)  # Largura fixa de 1.5 cm (compactação)
+                        
                         for paragraph in cell.paragraphs:
-                            for placeholder, valor in placeholders.items():
-                                if placeholder in paragraph.text:
-                                    paragraph.text = paragraph.text.replace(placeholder, valor)
+                            for run in paragraph.runs:
+                                run.font.name = "Calibri"  # Define a fonte como Calibri
+                                run.font.size = Pt(9)      # Define o tamanho da fonte como 9 pontos
 
-            # Preenche os dias no calendário
-            linha_inicial = 8  # Linha onde começam os dias no template
-            for table in doc.tables:
                 if len(table.rows) >= linha_inicial + quantidade_dias_no_mes:
                     for i in range(quantidade_dias_no_mes):
-                        dia_semana = pega_final_de_semana(ano, mes_numerico, i + 1)
                         dia_cell = table.rows[linha_inicial + i].cells[0]
-                        dia_cell.text = str(i + 1)  # Preenche o número do dia
+                        dia_cell.text = str(i + 1)
+                        
+                        for paragraph in dia_cell.paragraphs:
+                            for run in paragraph.runs:
+                                run.font.name = "Calibri"
+                                run.font.size = Pt(9)
 
-                        # Preenche sábados e domingos com texto específico
+                        dia_semana = pega_final_de_semana(ano, mes_numerico, i + 1)
+                        
                         if dia_semana == 5:  # Sábado
                             for j in [2, 5, 9, 13]:
-                                table.rows[linha_inicial + i].cells[j].text = "SÁBADO"
+                                cell = table.rows[linha_inicial + i].cells[j]
+                                cell.text = "SÁBADO"
+                                
+                                for paragraph in cell.paragraphs:
+                                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centraliza o texto na célula
+                                    for run in paragraph.runs:
+                                        run.font.name = "Calibri"
+                                        run.font.size = Pt(9)
                         elif dia_semana == 6:  # Domingo
                             for j in [2, 5, 9, 13]:
-                                table.rows[linha_inicial + i].cells[j].text = "DOMINGO"
+                                cell = table.rows[linha_inicial + i].cells[j]
+                                cell.text = "DOMINGO"
+                                
+                                for paragraph in cell.paragraphs:
+                                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centraliza o texto na célula
+                                    for run in paragraph.runs:
+                                        run.font.name = "Calibri"
+                                        run.font.size = Pt(9)
 
-                        # Preenche férias se aplicável
                         ferias_inicio = setor.get('feriasinicio')
                         ferias_final = setor.get('feriasfinal')
 
                         if ferias_inicio and ferias_final:
-                            # Converte datetime para date se necessário
                             if isinstance(ferias_inicio, datetime):
                                 ferias_inicio = ferias_inicio.date()
                             if isinstance(ferias_final, datetime):
@@ -119,7 +133,13 @@ def converte_setores_pf():
                             dia_atual = date(ano, mes_numerico, i + 1)
                             if ferias_inicio <= dia_atual <= ferias_final and dia_semana not in [5, 6]:
                                 for j in [2, 5, 9, 13]:
-                                    table.rows[linha_inicial + i].cells[j].text = "FÉRIAS"
+                                    cell.text = "FÉRIAS"
+                                    
+                                    for paragraph in cell.paragraphs:
+                                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centraliza o texto na célula
+                                        for run in paragraph.runs:
+                                            run.font.name = "Calibri"
+                                            run.font.size = Pt(9)
 
             doc.save(docx_path)
             convert_to_pdf(docx_path, pdf_path)
