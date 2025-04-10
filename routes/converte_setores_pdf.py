@@ -9,6 +9,7 @@ from docx.shared import Pt, Cm
 from docx.enum.table import WD_ROW_HEIGHT_RULE
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT  # Importa alinhamento de parágrafo
 import os
+import zipfile
 
 bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
 
@@ -48,55 +49,67 @@ def converte_setores_pf():
         # Consulta funcionários do setor informado
         busca_setor = "SELECT * FROM funcionarios WHERE setor = %s"
         cursor.execute(busca_setor, (setor,))
-        setores = cursor.fetchall()
+        funcionarios = cursor.fetchall()
 
-        if len(setores) == 0:
+        if len(funcionarios) == 0:
             conexao.close()
-            return jsonify({'erro': 'Setor não encontrado'}), 404
+            return jsonify({'erro': 'Setor não encontrado ou sem funcionários'}), 404
 
-        for setor in setores:
-            caminho_pasta = f"setor/{setor['setor']}/servidor/{mes_por_extenso}/{setor['nome']}"
+        arquivos_gerados = []
+
+        for funcionario in funcionarios:
+            caminho_pasta = f"setor/{funcionario['setor']}/servidor/{mes_por_extenso}/{funcionario['nome']}"
             os.makedirs(caminho_pasta, exist_ok=True)
 
-            docx_path = os.path.join(caminho_pasta, f"{setor['nome']}_FREQUÊNCIA_MENSAL.docx")
-            pdf_path = os.path.join(caminho_pasta, f"{setor['nome']}_FREQUÊNCIA_MENSAL.pdf")
+            docx_path = os.path.join(caminho_pasta, f"{funcionario['nome']}_FREQUÊNCIA_MENSAL.docx")
+            pdf_path = os.path.join(caminho_pasta, f"{funcionario['nome']}_FREQUÊNCIA_MENSAL.pdf")
 
             # Criação do documento Word baseado no template
             doc = Document(template_path)
 
-            # Ajusta as margens do documento para maximizar espaço na página
-            section = doc.sections[0]
-            section.top_margin = Cm(1)       # Margem superior: 1 cm
-            section.bottom_margin = Cm(1)    # Margem inferior: 1 cm
-            section.left_margin = Cm(1)      # Margem esquerda: 1 cm
-            section.right_margin = Cm(1)     # Margem direita: 1 cm
-
-            linha_inicial = 9  # Linha onde começam os dias no template
+            # Substitui os placeholders pelos valores reais
+            troca_de_dados = {
+                "CAMPO SETOR": funcionario['setor'],
+                "CAMPO MÊS": mes_por_extenso,
+                "CAMPO NOME": funcionario['nome'],
+                "CAMPO ANO": str(ano),
+                "CAMPO HORARIO": str(funcionario.get('horario', '')),
+                "CAMPO ENTRADA": str(funcionario.get('horarioentrada', '')),
+                "CAMPO SAÍDA": str(funcionario.get('horariosaida', '')),
+                "CAMPO MATRÍCULA": str(funcionario.get('matricula', '')),
+                "CAMPO CARGO": funcionario.get('cargo', ''),
+                "CAMPO FUNÇÃO": str(funcionario.get('funcao', '')),
+            }
 
             for table in doc.tables:
-                table.autofit = False  # Desativa ajuste automático da tabela
+                for row in table.rows:
+                    for cell in row.cells:
+                        for paragraph in cell.paragraphs:
+                            for placeholder, valor in troca_de_dados.items():
+                                if placeholder in paragraph.text:
+                                    paragraph.text = paragraph.text.replace(placeholder, valor)
+
+            linha_inicial = 9
+
+            for table in doc.tables:
+                table.autofit = False
                 
                 for row in table.rows:
-                    row.height = Cm(0.5)  # Altura fixa de 0.5 cm (compactação)
+                    row.height = Cm(0.5)
                     row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
                     
                     for cell in row.cells:
-                        cell.width = Cm(1.5)  # Largura fixa de 1.5 cm (compactação)
+                        cell.width = Cm(1.5)
                         
                         for paragraph in cell.paragraphs:
                             for run in paragraph.runs:
-                                run.font.name = "Calibri"  # Define a fonte como Calibri
-                                run.font.size = Pt(9)      # Define o tamanho da fonte como 9 pontos
+                                run.font.name = "Calibri"
+                                run.font.size = Pt(9)
 
                 if len(table.rows) >= linha_inicial + quantidade_dias_no_mes:
                     for i in range(quantidade_dias_no_mes):
                         dia_cell = table.rows[linha_inicial + i].cells[0]
                         dia_cell.text = str(i + 1)
-                        
-                        for paragraph in dia_cell.paragraphs:
-                            for run in paragraph.runs:
-                                run.font.name = "Calibri"
-                                run.font.size = Pt(9)
 
                         dia_semana = pega_final_de_semana(ano, mes_numerico, i + 1)
                         
@@ -104,25 +117,13 @@ def converte_setores_pf():
                             for j in [2, 5, 9, 13]:
                                 cell = table.rows[linha_inicial + i].cells[j]
                                 cell.text = "SÁBADO"
-                                
-                                for paragraph in cell.paragraphs:
-                                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centraliza o texto na célula
-                                    for run in paragraph.runs:
-                                        run.font.name = "Calibri"
-                                        run.font.size = Pt(9)
                         elif dia_semana == 6:  # Domingo
                             for j in [2, 5, 9, 13]:
                                 cell = table.rows[linha_inicial + i].cells[j]
                                 cell.text = "DOMINGO"
-                                
-                                for paragraph in cell.paragraphs:
-                                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centraliza o texto na célula
-                                    for run in paragraph.runs:
-                                        run.font.name = "Calibri"
-                                        run.font.size = Pt(9)
 
-                        ferias_inicio = setor.get('feriasinicio')
-                        ferias_final = setor.get('feriasfinal')
+                        ferias_inicio = funcionario.get('feriasinicio')
+                        ferias_final = funcionario.get('feriasfinal')
 
                         if ferias_inicio and ferias_final:
                             if isinstance(ferias_inicio, datetime):
@@ -134,17 +135,22 @@ def converte_setores_pf():
                             if ferias_inicio <= dia_atual <= ferias_final and dia_semana not in [5, 6]:
                                 for j in [2, 5, 9, 13]:
                                     cell.text = "FÉRIAS"
-                                    
-                                    for paragraph in cell.paragraphs:
-                                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centraliza o texto na célula
-                                        for run in paragraph.runs:
-                                            run.font.name = "Calibri"
-                                            run.font.size = Pt(9)
 
             doc.save(docx_path)
             convert_to_pdf(docx_path, pdf_path)
 
-        return jsonify({'mensagem': 'Documentos gerados com sucesso!'}), 200
+            arquivos_gerados.append(pdf_path)
+            
+        # Cria um arquivo ZIP contendo todos os PDFs gerados
+        zip_path = f"setor/{setor}_{mes_por_extenso}_frequencia_mensal.zip"
+        with zipfile.ZipFile(zip_path, 'w') as zipf:
+            for pdf in arquivos_gerados:
+                zipf.write(pdf, os.path.basename(pdf))  # Adiciona o PDF ao ZIP
+
+        conexao.close()
+
+        return jsonify({'mensagem': 'Documentos gerados com sucesso!', 'zip_path': zip_path})
         
     except Exception as exception:
         return jsonify({'erro': f'Erro ao conectar ao banco de dados: {str(exception)}'}), 500
+

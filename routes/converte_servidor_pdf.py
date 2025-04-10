@@ -8,7 +8,8 @@ from docx import Document
 from datetime import datetime, date
 from docx.shared import Pt, Cm
 from docx.enum.table import WD_ROW_HEIGHT_RULE
-from docx.enum.text import WD_PARAGRAPH_ALIGNMENT  # Importa alinhamento de parágrafo
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT # Importa alinhamento de parágrafo
+import zipfile 
 import os
 
 bp_converte_servidor_pdf = Blueprint('bp_converte_servidor_pdf', __name__)
@@ -87,21 +88,36 @@ def converte_servidor_pdf():
             doc.save(docx_path)
             convert_to_pdf(docx_path, pdf_path)
 
-            arquivos_gerados.append({
-                'servidor': servidor['nome'],
-                'pdf_path': pdf_path
-            })
+            arquivos_gerados.append(pdf_path)
 
+            # Salva o caminho do PDF no banco de dados
+            cursor.execute(
+                "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)",
+                (servidor['id'], pdf_path)
+            )
+
+        # Cria um arquivo ZIP contendo todos os PDFs gerados
+        zip_path = f"setor/{mes_por_extenso}_frequencia_mensal.zip"
+        with zipfile.ZipFile(zip_path, 'w') as zipf:
+            for pdf in arquivos_gerados:
+                zipf.write(pdf, os.path.basename(pdf))  # Adiciona o PDF ao ZIP
+
+        # Salva o caminho do ZIP no banco de dados
+        cursor.execute(
+            "INSERT INTO arquivos_zip (mes, caminho_zip) VALUES (%s, %s)",
+            (mes_por_extenso, zip_path)
+        )
+        
+        conexao.commit()  # Confirma as alterações no banco
         conexao.close()
 
-        # Retorna a lista de PDFs gerados
-        return jsonify({'arquivos_gerados': arquivos_gerados})
+        # Retorna o caminho do ZIP gerado
+        return jsonify({'mensagem': 'Documentos gerados com sucesso!', 'zip_path': zip_path})
     
     except Exception as exception:
         if 'conexao' in locals():
             conexao.close()
         return jsonify({'erro': f'Erro no servidor: {str(exception)}'}), 500
-
 
 def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor):
     linha_inicial = 8
