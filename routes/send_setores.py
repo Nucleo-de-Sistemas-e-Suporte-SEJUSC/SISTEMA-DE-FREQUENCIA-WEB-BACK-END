@@ -14,10 +14,13 @@ def download_zip(setor, mes):
         cursor = conexao.cursor(dictionary=True)
 
         # Consulta SQL para buscar o caminho do ZIP
-        cursor.execute("SELECT caminho_zip FROM arquivos_zip_setores WHERE setor=%s AND mes=%s", (setor, mes))
+        cursor.execute("SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s", (setor, mes))
         result = cursor.fetchone()
+        print("CHEGOOOU" ,result["caminho_zip"])
+        caminho_modificado = result["caminho_zip"].replace("/", "\\")
+        print(caminho_modificado)
 
-        if not result or not os.path.exists(result['caminho_zip']):
+        if not result or not os.path.exists(caminho_modificado):
             print(f"Arquivo ZIP não encontrado para setor={setor} e mes={mes}")
             return jsonify({'erro': 'Arquivo ZIP não encontrado'}), 404
 

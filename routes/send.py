@@ -2,6 +2,7 @@ from flask import send_file
 from flask import Blueprint, request, jsonify
 from conection_mysql import connect_mysql
 import os
+import re
 
 bp_send_servidor_pdf = Blueprint('bp_send_servidor_pdf', __name__)
 
@@ -16,11 +17,13 @@ def download_zip(mes):
         cursor.execute("SELECT caminho_zip FROM arquivos_zip WHERE mes = %s", (mes,))
         result = cursor.fetchone()
 
-        if not result or not os.path.exists(result['caminho_zip']):
+        caminho_modificado = result["caminho_zip"].replace("/", "\\")
+
+        if not result or not os.path.exists(caminho_modificado):
             conexao.close()
             return jsonify({'erro': 'Arquivo ZIP não encontrado'}), 404
 
-        zip_path = result['caminho_zip']
+        zip_path = caminho_modificado
         conexao.close()
 
         # Envia o arquivo ZIP ao frontend

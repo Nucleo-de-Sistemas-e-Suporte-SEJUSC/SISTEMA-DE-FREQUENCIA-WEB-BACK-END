@@ -147,6 +147,13 @@ def converte_setores_pf():
             for pdf in arquivos_gerados:
                 zipf.write(pdf, os.path.basename(pdf))  # Adiciona o PDF ao ZIP
 
+        cursor.execute(
+            "INSERT INTO arquivos_zip (mes, setor, caminho_zip) VALUES (%s, %s, %s)",
+            (mes_por_extenso, setor, zip_path)
+        )
+        conexao.commit()
+        conexao.close()
+
         conexao.close()
 
         return jsonify({'mensagem': 'Documentos gerados com sucesso!', 'zip_path': zip_path})
