@@ -6,8 +6,9 @@ from conection_mysql import connect_mysql
 from mysql.connector import Error
 from docx import Document
 from datetime import date, datetime, timedelta
-from docx.shared import Pt
+from docx.shared import Pt,Cm
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.enum.table import WD_ROW_HEIGHT_RULE
 import os
 
 bp_converte_estagiario_pdf = Blueprint('bp_converte_estagiario_pdf', __name__)
@@ -89,65 +90,90 @@ def converte_estagiario_pdf():
 
     
     
-def calcula_periodo_21_a_20(ano, mes):
-    """
-    Calcula o intervalo de datas do dia 21 do mês atual ao dia 20 do próximo mês.
-    Retorna uma lista de dicionários contendo os dias e os respectivos meses.
-    """
-    data_inicio = datetime(ano, mes, 21)
-    if mes == 12:  # Caso especial para dezembro
-        data_fim = datetime(ano + 1, 1, 20)
-    else:
-        data_fim = datetime(ano, mes + 1, 20)
-
-    dias_periodo = []
-    data_atual = data_inicio
-    while data_atual <= data_fim:
-        dias_periodo.append({
-            "dia": data_atual.day,
-            "mes": data_atual.month,
-            "ano": data_atual.year
-        })
-        data_atual += timedelta(days=1)
-    
-    return dias_periodo
-
-
 def cria_dias_da_celula(doc, ano, mes_numerico, estagiario):
-    linha_inicial = 8  # Linha inicial onde começa o preenchimento dos dias
-    dias_periodo = calcula_periodo_21_a_20(ano, mes_numerico)
+    from datetime import datetime, timedelta, date
 
-    def formatar_celula(celula, texto):
+    def calcula_periodo_21_a_20(ano, mes):
         """
-        Formata a célula com o texto especificado e ajusta alinhamento e estilo.
+        Calcula o intervalo de datas do dia 21 do mês atual ao dia 20 do próximo mês.
+        Retorna uma lista de dicionários contendo os dias e os respectivos meses.
         """
-        # Limpa qualquer conteúdo anterior na célula
-        celula.text = ""
+        data_inicio = datetime(ano, mes, 21)
+        if mes == 12:  # Caso especial para dezembro
+            data_fim = datetime(ano + 1, 1, 20)
+        else:
+            data_fim = datetime(ano, mes + 1, 20)
+
+        dias_periodo = []
+        data_atual = data_inicio
+        while data_atual <= data_fim:
+            dias_periodo.append({
+                "dia": data_atual.day,
+                "mes": data_atual.month,
+                "ano": data_atual.year
+            })
+            data_atual += timedelta(days=1)
         
-        # Adiciona o texto formatado
-        p = celula.add_paragraph(texto)
-        p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centraliza horizontalmente
-        run = p.runs[0]
-        run.font.size = Pt(10)  # Define tamanho da fonte
+        return dias_periodo
+
+    linha_inicial = 8  # Ajuste conforme seu template
 
     for table in doc.tables:
+        table.autofit = False
+        
+        for row in table.rows:
+            row.height = Cm(0.5)
+            row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+            for cell in row.cells:
+                cell.width = Cm(1.5)
+                for paragraph in cell.paragraphs:
+                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                    for run in paragraph.runs:
+                        run.font.name = "Calibri"
+                        run.font.size = Pt(9)
+
+        dias_periodo = calcula_periodo_21_a_20(ano, mes_numerico)
+        linhas_necessarias = linha_inicial + len(dias_periodo)
+
+        # Validação: impede execução se faltar linha
+        if len(table.rows) < linhas_necessarias:
+            raise Exception(
+                f"O template possui {len(table.rows)} linhas, mas são necessárias {linhas_necessarias} "
+                f"para preencher o período de 21/{mes_numerico}/{ano} a 20/{(mes_numerico % 12) + 1}/{ano if mes_numerico < 12 else ano + 1}."
+            )
+
+        # Só executa se houver linhas suficientes
         for i, dia_info in enumerate(dias_periodo):
-            dia = dia_info['dia']
-            mes = dia_info['mes']
-            ano = dia_info['ano']
-            dia_semana = pega_final_de_semana(ano, mes, dia)
+            dia = dia_info["dia"]
+            mes = dia_info["mes"]
+            ano_dia = dia_info["ano"]
 
+            dia_semana = pega_final_de_semana(ano_dia, mes, dia)
             row = table.rows[linha_inicial + i]
+            dia_cell = row.cells[0]
+            dia_cell.text = str(dia)
 
-            if dia_semana == 5:  # Sábado
-                formatar_celula(row.cells[1], "SÁBADO")
-                formatar_celula(row.cells[2], "SÁBADO")
-                formatar_celula(row.cells[4], "SÁBADO")
-                formatar_celula(row.cells[5], "SÁBADO")
+            if dia_semana == 5:    # Sábado
+                for j in [2, 5, 9, 13]:
+                    cell = row.cells[j]
+                    cell.text = "SÁBADO"
+                    for paragraph in cell.paragraphs:
+                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-            if dia_semana == 6:  # Domingo
-                formatar_celula(row.cells[1], "DOMINGO")
-                formatar_celula(row.cells[2], "DOMINGO")
-                formatar_celula(row.cells[4], "DOMINGO")
-                formatar_celula(row.cells[5], "DOMINGO")
+            elif dia_semana == 6:   # Domingo
+                for j in [2, 5, 9, 13]:
+                    cell = row.cells[j]
+                    cell.text = "DOMINGO"
+                    for paragraph in cell.paragraphs:
+                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
+            if estagiario.get('feriasinicio') and estagiario.get('feriasfinal'):
+                ferias_inicio = estagiario['feriasinicio'].date() if hasattr(estagiario['feriasinicio'], 'date') else estagiario['feriasinicio']
+                ferias_final = estagiario['feriasfinal'].date() if hasattr(estagiario['feriasfinal'], 'date') else estagiario['feriasfinal']
+                data_atual = date(ano_dia, mes, dia)
+                if ferias_inicio <= data_atual <= ferias_final and dia_semana not in [5, 6]:
+                    for j in [2, 5, 9, 13]:
+                        cell = row.cells[j]
+                        cell.text = "FÉRIAS"
+                        for paragraph in cell.paragraphs:
+                            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
