@@ -64,6 +64,7 @@ def converte_estagiario_pdf():
             "CAMPO HORARIO": str(estagiario['horario']),
             "CAMPO ENTRADA": str(estagiario.get('horario_entrada')),  # Ajuste conforme necessário
             "CAMPO SAÍDA": str(estagiario.get('horario_saida')),      # Ajuste conforme necessário
+            "CAMPO CARGO": str(estagiario.get('cargo')),
         }
 
         for placeholder, valor in troca_de_dados.items():
