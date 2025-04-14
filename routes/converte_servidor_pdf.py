@@ -97,15 +97,15 @@ def converte_servidor_pdf():
             )
 
         # Cria um arquivo ZIP contendo todos os PDFs gerados
-        zip_path = f"setor/{mes_por_extenso}_frequencia_mensal.zip"
+        zip_path = f"setor/{servidor["nome"]}_{mes_por_extenso}_frequencia_mensal.zip"
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for pdf in arquivos_gerados:
                 zipf.write(pdf, os.path.basename(pdf))  # Adiciona o PDF ao ZIP
 
         # Salva o caminho do ZIP no banco de dados
         cursor.execute(
-            "INSERT INTO arquivos_zip (mes, caminho_zip) VALUES (%s, %s)",
-            (mes_por_extenso, zip_path)
+            "INSERT INTO arquivos_zip (mes, nome, caminho_zip) VALUES (%s, %s, %s)",
+            (mes_por_extenso, servidor["nome"], zip_path)
         )
         
         conexao.commit()  # Confirma as alterações no banco

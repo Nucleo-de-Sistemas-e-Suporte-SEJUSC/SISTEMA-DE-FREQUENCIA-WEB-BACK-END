@@ -6,15 +6,15 @@ import re
 
 bp_send_servidor_pdf = Blueprint('bp_send_servidor_pdf', __name__)
 
-@bp_send_servidor_pdf.route('/api/servidores/pdf/download-zip/<mes>', methods=['GET'])
-def download_zip(mes):
+@bp_send_servidor_pdf.route('/api/servidores/<nome>/pdf/download-zip/<mes>', methods=['GET'])
+def download_zip(nome, mes):
     try:
         # Conexão com o banco de dados
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
         # Busca o caminho do ZIP no banco de dados
-        cursor.execute("SELECT caminho_zip FROM arquivos_zip WHERE mes = %s", (mes,))
+        cursor.execute("SELECT caminho_zip FROM arquivos_zip WHERE mes = %s and nome = %s", (mes,nome,))
         result = cursor.fetchone()
 
         caminho_modificado = result["caminho_zip"].replace("/", "\\")
@@ -23,6 +23,7 @@ def download_zip(mes):
             conexao.close()
             return jsonify({'erro': 'Arquivo ZIP não encontrado'}), 404
 
+    
         zip_path = caminho_modificado
         conexao.close()
 
