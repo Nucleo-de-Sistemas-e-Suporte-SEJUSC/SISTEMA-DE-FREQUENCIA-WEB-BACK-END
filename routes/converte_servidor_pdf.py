@@ -19,35 +19,25 @@ def converte_servidor_pdf():
     try:
         body = request.json or {}
         funcionarios_id = body.get('funcionarios', [])
-        
-        # Conexão com o banco de dados
+        mes_body = body.get('mes')
+
+        if not funcionarios_id:
+            return jsonify({'erro': 'Nenhum ID de funcionário fornecido'}), 400
+
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
-        # Verifica se IDs foram fornecidos; caso contrário, busca todos os funcionários
-        if not funcionarios_id:
-            query = "SELECT * FROM funcionarios"
-            cursor.execute(query)
-        else:
-            try:
-                ids = [int(id) for id in funcionarios_id]
-            except ValueError:
-                conexao.close()
-                return jsonify({'erro': 'IDs inválidos'}), 400
-
-            placeholders = ','.join(['%s'] * len(ids))
-            query = f"SELECT * FROM funcionarios WHERE id IN ({placeholders})"
-            cursor.execute(query, ids)
-
+        # Busca todos os servidores de uma vez
+        placeholders = ','.join(['%s'] * len(funcionarios_id))
+        query = f"SELECT * FROM funcionarios WHERE id IN ({placeholders})"
+        cursor.execute(query, funcionarios_id)
         servidores = cursor.fetchall()
 
-        # Verifica se há servidores retornados
         if not servidores:
             conexao.close()
             return jsonify({'erro': 'Nenhum servidor encontrado'}), 404
 
         # Processa informações do mês
-        mes_body = body.get('mes')
         data_ano_mes_atual = data_atual(mes_body)
         mes_por_extenso = data_ano_mes_atual['mes']
         mes_numerico = data_ano_mes_atual['mes_numerico']
@@ -56,6 +46,7 @@ def converte_servidor_pdf():
 
         template_path = 'FREQUÊNCIA_MENSAL.docx'
         arquivos_gerados = []
+        nomes_servidores = []
 
         # Gera PDFs para cada servidor
         for servidor in servidores:
@@ -91,33 +82,41 @@ def converte_servidor_pdf():
             arquivos_gerados.append(pdf_path)
 
             # Salva o caminho do PDF no banco de dados
+            arquivos_gerados.append(pdf_path)
+            nomes_servidores.append(servidor['nome'])
+            
             cursor.execute(
                 "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)",
                 (servidor['id'], pdf_path)
             )
 
+
         # Cria um arquivo ZIP contendo todos os PDFs gerados
-        zip_path = f"setor/{servidor["nome"]}_{mes_por_extenso}_frequencia_mensal.zip"
+       # Nome do ZIP com todos os servidores
+        zip_path = f"setor/frequencias_{mes_por_extenso}.zip"
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for pdf in arquivos_gerados:
-                zipf.write(pdf, os.path.basename(pdf))  # Adiciona o PDF ao ZIP
+                zipf.write(pdf, os.path.basename(pdf))
 
-        # Salva o caminho do ZIP no banco de dados
+        # Salva no banco com os IDs relacionados
         cursor.execute(
-            "INSERT INTO arquivos_zip (mes, nome, caminho_zip) VALUES (%s, %s, %s)",
-            (mes_por_extenso, servidor["nome"], zip_path)
+            "INSERT INTO arquivos_zip (mes, caminho_zip, servidores_ids) VALUES (%s, %s, %s)",
+            (mes_por_extenso, zip_path, ','.join(funcionarios_id))
         )
         
-        conexao.commit()  # Confirma as alterações no banco
+        conexao.commit()
         conexao.close()
 
-        # Retorna o caminho do ZIP gerado
-        return jsonify({'mensagem': 'Documentos gerados com sucesso!', 'zip_path': zip_path})
+        return jsonify({
+            'mensagem': 'Documentos gerados com sucesso!',
+            'zip_path': zip_path,
+            'servidores': nomes_servidores
+        })
     
-    except Exception as exception:
+    except Exception as e:
         if 'conexao' in locals():
             conexao.close()
-        return jsonify({'erro': f'Erro no servidor: {str(exception)}'}), 500
+        return jsonify({'erro': str(e)}), 500
 
 def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor):
     linha_inicial = 8
@@ -165,6 +164,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor
                     ferias_inicio = servidor['feriasinicio'].date() if hasattr(servidor['feriasinicio'], 'date') else servidor['feriasinicio']
                     ferias_final = servidor['feriasfinal'].date() if hasattr(servidor['feriasfinal'], 'date') else servidor['feriasfinal']
                     
+                    print("AQUI")
                     data_atual = date(ano, mes_numerico, dia)
                     if ferias_inicio <= data_atual <= ferias_final and dia_semana not in [5, 6]:
                         for j in [2, 5, 9, 13]:

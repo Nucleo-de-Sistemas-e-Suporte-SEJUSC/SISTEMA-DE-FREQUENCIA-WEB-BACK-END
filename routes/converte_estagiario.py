@@ -10,6 +10,7 @@ from docx.shared import Pt,Cm
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.enum.table import WD_ROW_HEIGHT_RULE
 import os
+import zipfile 
 
 bp_converte_estagiario_pdf = Blueprint('bp_converte_estagiario_pdf', __name__)
 
@@ -18,7 +19,8 @@ def converte_estagiario_pdf():
     try:
         body = request.json or {}
         estagiarios_id = body.get('estagiarios', [])
-        
+        print(estagiarios_id)
+
         if not estagiarios_id:
             return jsonify({'erro': 'Nenhum estagiário selecionado'}), 400
 
@@ -39,56 +41,84 @@ def converte_estagiario_pdf():
         placeholders = ','.join(['%s'] * len(ids))
         query = f"SELECT * FROM estagiarios WHERE id IN ({placeholders})"
         cursor.execute(query, ids)
-        estagiarioes = cursor.fetchall()
+        estagiarios = cursor.fetchall()
 
-        if not estagiarioes:
+
+        if not estagiarios:
             conexao.close()
             return jsonify({'erro': 'Nenhum estagiário encontrado'}), 404
 
-        template_path = 'FREQUÊNCIA ESTAGIÁRIOS - MODELO.docx'
-        
-        # Processa apenas o primeiro estagiário (ou ajuste para múltiplos arquivos)
-        estagiario = estagiarioes[0]
-        
-        doc = Document(template_path)
-        
-        # Ajuste aqui para usar o período correto
-        cria_dias_da_celula(doc, ano, mes_numerico, estagiario)
+        arquivos_gerados = []
 
-        troca_de_dados = {
-            "CAMPO SETOR": estagiario['setor'],  # Substituído 'setor' por 'lotacao'
-            "CAMPO MÊS": mes_por_extenso,
-            "CAMPO NOME": estagiario['nome'],
-            "CAMPO PERIODO": f"21/{mes_numerico}/{ano} a 20/{(mes_numerico % 12) + 1}/{ano if mes_numerico < 12 else ano + 1}",
-            "CAMPO ANO": str(ano),
-            "CAMPO HORARIO": str(estagiario['horario']),
-            "CAMPO ENTRADA": str(estagiario.get('horario_entrada')),  # Ajuste conforme necessário
-            "CAMPO SAÍDA": str(estagiario.get('horario_saida')),      # Ajuste conforme necessário
-            "CAMPO CARGO": str(estagiario.get('cargo')),
-        }
+        for estagiario in estagiarios:
+            template_path = 'FREQUÊNCIA ESTAGIÁRIOS - MODELO.docx'
+            doc = Document(template_path)
 
-        for placeholder, valor in troca_de_dados.items():
-            muda_texto_documento(doc, placeholder, valor)
+            cria_dias_da_celula(doc, ano, mes_numerico, estagiario)
 
-        caminho_pasta = f"setor/{estagiario['setor']}/estagiario/{mes_por_extenso}/{estagiario['nome']}"
-        os.makedirs(caminho_pasta, exist_ok=True)
+            troca_de_dados = {
+                "CAMPO SETOR": estagiario['setor'],
+                "CAMPO MÊS": mes_por_extenso,
+                "CAMPO NOME": estagiario['nome'],
+                "CAMPO PERIODO": f"21/{mes_numerico}/{ano} a 20/{(mes_numerico % 12) + 1}/{ano if mes_numerico < 12 else ano + 1}",
+                "CAMPO ANO": str(ano),
+                "CAMPO HORARIO": str(estagiario.get('horario')),
+                "CAMPO ENTRADA": str(estagiario.get('horario_entrada')),
+                "CAMPO SAÍDA": str(estagiario.get('horario_saida')),
+                "CAMPO CARGO": str(estagiario.get('cargo')),
+            }
 
-        nome_base = f"{estagiario['nome']}FREQUÊNCIA ESTAGIÁRIOS - MODELO.docx"
-        docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
-        pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
+            for placeholder, valor in troca_de_dados.items():
+                muda_texto_documento(doc, placeholder, valor)
+            nome_limpo = estagiario['nome'].strip()
+            setor_limpo = estagiario['setor'].strip()
+            caminho_pasta = f"setor/{setor_limpo}/estagiario/{mes_por_extenso}/{nome_limpo}"
+            os.makedirs(caminho_pasta, exist_ok=True)
 
-        doc.save(docx_path)
-        convert_to_pdf(docx_path, pdf_path)
+            nome_base = f"{nome_limpo.replace(' ', '_')}_{estagiario['id']}_FREQUENCIA"
+            docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
+            pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
 
+
+            doc.save(docx_path)
+            convert_to_pdf(docx_path, pdf_path)
+
+            arquivos_gerados.append(pdf_path)
+
+            # Salva no banco o caminho do PDF
+            cursor.execute(
+                "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)",
+                (estagiario['id'], pdf_path)
+            )
+
+        # Cria um arquivo ZIP com todos os PDFs
+        zip_path = f"setor/frequencias_{mes_por_extenso}.zip"
+        with zipfile.ZipFile(zip_path, 'w') as zipf:
+            for pdf in arquivos_gerados:
+                zipf.write(pdf, os.path.basename(pdf))
+
+        # Salva o ZIP no banco
+        cursor.execute(
+            "INSERT INTO arquivos_zip (mes, caminho_zip) VALUES (%s, %s)",
+            (mes_por_extenso, zip_path)
+        )
+
+        conexao.commit()
         conexao.close()
 
-        return send_file(pdf_path, as_attachment=True, download_name=f"{nome_base}.pdf")
-    
+        print(" TO CHEGANDO NO FINAL")
+
+        return send_file(
+            zip_path,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f'frequencias_estagiarios_{mes_por_extenso}.zip'
+        )
+
     except Exception as exception:
         if 'conexao' in locals():
             conexao.close()
-        return jsonify({'erro': f'Erro no estagiário: {str(exception)}'}), 500
-
+        return jsonify({'erro': f'Erro: {str(exception)}'}), 500
     
     
 def cria_dias_da_celula(doc, ano, mes_numerico, estagiario):

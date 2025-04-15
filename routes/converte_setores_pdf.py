@@ -154,8 +154,6 @@ def converte_setores_pf():
         conexao.commit()
         conexao.close()
 
-        conexao.close()
-
         return jsonify({'mensagem': 'Documentos gerados com sucesso!', 'zip_path': zip_path})
         
     except Exception as exception:
