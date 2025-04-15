@@ -5,7 +5,6 @@ from flask import Blueprint, request, jsonify, send_file
 from conection_mysql import connect_mysql
 from mysql.connector import Error
 from docx import Document
-from datetime import date, datetime, timedelta
 from docx.shared import Pt,Cm
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.enum.table import WD_ROW_HEIGHT_RULE
@@ -60,7 +59,7 @@ def converte_estagiario_pdf():
                 "CAMPO SETOR": estagiario['setor'],
                 "CAMPO MÊS": mes_por_extenso,
                 "CAMPO NOME": estagiario['nome'],
-                "CAMPO PERIODO": f"21/{mes_numerico}/{ano} a 20/{(mes_numerico % 12) + 1}/{ano if mes_numerico < 12 else ano + 1}",
+                #"CAMPO PERIODO": f"21/{mes_numerico}/{ano} a 20/{(mes_numerico % 12) + 1}/{ano if mes_numerico < 12 else ano + 1}",
                 "CAMPO ANO": str(ano),
                 "CAMPO HORARIO": str(estagiario.get('horario')),
                 "CAMPO ENTRADA": str(estagiario.get('horario_entrada')),
@@ -105,8 +104,6 @@ def converte_estagiario_pdf():
 
         conexao.commit()
         conexao.close()
-
-        print(" TO CHEGANDO NO FINAL")
 
         return send_file(
             zip_path,
@@ -197,11 +194,12 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario):
                     cell.text = "DOMINGO"
                     for paragraph in cell.paragraphs:
                         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-
+                        
             if estagiario.get('feriasinicio') and estagiario.get('feriasfinal'):
-                ferias_inicio = estagiario['feriasinicio'].date() if hasattr(estagiario['feriasinicio'], 'date') else estagiario['feriasinicio']
-                ferias_final = estagiario['feriasfinal'].date() if hasattr(estagiario['feriasfinal'], 'date') else estagiario['feriasfinal']
+                ferias_inicio = estagiario['feriasinicio'].date()
+                ferias_final = estagiario['feriasfinal'].date()
                 data_atual = date(ano_dia, mes, dia)
+
                 if ferias_inicio <= data_atual <= ferias_final and dia_semana not in [5, 6]:
                     for j in [2, 5, 9, 13]:
                         cell = row.cells[j]
