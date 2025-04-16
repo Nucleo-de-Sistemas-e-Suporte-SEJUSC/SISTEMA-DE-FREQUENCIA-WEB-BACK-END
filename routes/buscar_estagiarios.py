@@ -15,7 +15,7 @@ def buscar_estagiarios():
         cursor = conexao.cursor(dictionary=True)
 
         # Consulta padrão para buscar estagiários
-        consulta = "SELECT * FROM estagiarios WHERE 1=1"
+        consulta = "SELECT * FROM estagiarios  WHERE 1=1 ORDER BY nome"
         parametros = []
 
         # Filtros opcionais

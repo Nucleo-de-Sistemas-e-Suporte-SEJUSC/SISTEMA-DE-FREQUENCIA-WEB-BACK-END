@@ -129,13 +129,13 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor
             row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
             
             for cell in row.cells:
-                cell.width = Cm(1.5)  # Define largura fixa das células
+                cell.width = Cm(3.0)  # Define largura fixa das células
                 
                 for paragraph in cell.paragraphs:
                     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centraliza o texto nas células
                     for run in paragraph.runs:
                         run.font.name = "Calibri"  # Define fonte como Calibri
-                        run.font.size = Pt(9)      # Define tamanho da fonte como 9 pontos
+                        run.font.size = Pt(7)      # Define tamanho da fonte como 9 pontos
 
         if len(table.rows) >= linha_inicial + quantidade_dias_no_mes:
             for i in range(quantidade_dias_no_mes):
@@ -145,6 +145,8 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, servidor
                 
                 dia_cell = row.cells[0]
                 dia_cell.text = str(dia)
+                for paragraph in dia_cell.paragraphs:
+                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
                 if dia_semana == 5:    
                     for j in [2, 5, 9, 13]:

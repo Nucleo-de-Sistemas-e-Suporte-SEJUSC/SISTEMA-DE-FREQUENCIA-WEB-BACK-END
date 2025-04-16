@@ -78,7 +78,7 @@ def converte_estagiario_pdf():
             docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
             pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
 
-
+            
             doc.save(docx_path)
             convert_to_pdf(docx_path, pdf_path)
 
@@ -122,12 +122,8 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario):
     from datetime import datetime, timedelta, date
 
     def calcula_periodo_21_a_20(ano, mes):
-        """
-        Calcula o intervalo de datas do dia 21 do mês atual ao dia 20 do próximo mês.
-        Retorna uma lista de dicionários contendo os dias e os respectivos meses.
-        """
         data_inicio = datetime(ano, mes, 21)
-        if mes == 12:  # Caso especial para dezembro
+        if mes == 12:
             data_fim = datetime(ano + 1, 1, 20)
         else:
             data_fim = datetime(ano, mes + 1, 20)
@@ -141,36 +137,38 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario):
                 "ano": data_atual.year
             })
             data_atual += timedelta(days=1)
-        
         return dias_periodo
 
-    linha_inicial = 8  # Ajuste conforme seu template
+    linha_inicial = 7  # Ajuste conforme necessário
 
     for table in doc.tables:
-        table.autofit = False
-        
+
+        # Configurar linhas existentes
         for row in table.rows:
-            row.height = Cm(0.5)
+            row.height = Cm(0.55)  # Aumentei um pouco a altura
             row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
             for cell in row.cells:
-                cell.width = Cm(1.5)
                 for paragraph in cell.paragraphs:
                     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                     for run in paragraph.runs:
                         run.font.name = "Calibri"
-                        run.font.size = Pt(9)
+                        run.font.size = Pt(7)  # Aumentei um pouco o tamanho
+                        run.font.bold = False
 
         dias_periodo = calcula_periodo_21_a_20(ano, mes_numerico)
         linhas_necessarias = linha_inicial + len(dias_periodo)
 
-        # Validação: impede execução se faltar linha
+        # Validação de linhas
         if len(table.rows) < linhas_necessarias:
-            raise Exception(
-                f"O template possui {len(table.rows)} linhas, mas são necessárias {linhas_necessarias} "
-                f"para preencher o período de 21/{mes_numerico}/{ano} a 20/{(mes_numerico % 12) + 1}/{ano if mes_numerico < 12 else ano + 1}."
-            )
+            # Adiciona linhas extras se necessário
+            for _ in range(linhas_necessarias - len(table.rows)):
+                new_row = table.add_row()
+                for cell in new_row.cells:
+                    cell.width = Cm(1.5)
+                    for paragraph in cell.paragraphs:
+                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-        # Só executa se houver linhas suficientes
+        # Preenchimento dos dias
         for i, dia_info in enumerate(dias_periodo):
             dia = dia_info["dia"]
             mes = dia_info["mes"]
@@ -178,21 +176,41 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario):
 
             dia_semana = pega_final_de_semana(ano_dia, mes, dia)
             row = table.rows[linha_inicial + i]
+            
+            # Limpa células antes de preencher
+            for cell in row.cells:
+                cell.text = ""
+                for paragraph in cell.paragraphs:
+                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                    paragraph.clear()
+            
+            # Preenche dia
             dia_cell = row.cells[0]
-            dia_cell.text = str(dia)
+            dia_paragraph = dia_cell.paragraphs[0]
+            dia_run = dia_paragraph.add_run(str(dia))
+            dia_run.font.name = "Calibri"
+            dia_run.font.size = Pt(8)
+            dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
+            # Verifica fins de semana e férias
             if dia_semana == 5:    # Sábado
-                for j in [2, 5, 9, 13]:
+                texto = "SÁBADO"
+                for j in [2, 5, 8, 12]:  # Ajustei os índices das células
                     cell = row.cells[j]
-                    cell.text = "SÁBADO"
+                    cell.text = texto
                     for paragraph in cell.paragraphs:
+                        for run in paragraph.runs:
+                            run.font.bold = True
                         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
             elif dia_semana == 6:   # Domingo
-                for j in [2, 5, 9, 13]:
+                texto = "DOMINGO"
+                for j in [2, 5, 8, 12]:  # Ajustei os índices das células
                     cell = row.cells[j]
-                    cell.text = "DOMINGO"
+                    cell.text = texto
                     for paragraph in cell.paragraphs:
+                        for run in paragraph.runs:
+                            run.font.bold = True
                         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                         
             if estagiario.get('feriasinicio') and estagiario.get('feriasfinal'):
@@ -201,8 +219,12 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario):
                 data_atual = date(ano_dia, mes, dia)
 
                 if ferias_inicio <= data_atual <= ferias_final and dia_semana not in [5, 6]:
-                    for j in [2, 5, 9, 13]:
+                    texto = "FÉRIAS"
+                    for j in [2, 5, 8, 12]:  # Ajustei os índices das células
                         cell = row.cells[j]
-                        cell.text = "FÉRIAS"
+                        cell.text = texto
                         for paragraph in cell.paragraphs:
+                            for run in paragraph.runs:
+                                run.font.bold = True
                             paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
