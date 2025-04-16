@@ -9,11 +9,6 @@ def connect_mysql():
             user="devop",             # Usuário do banco de dados
             password="DEVsjc@2025",   # Senha do banco de dados
             database="sistema_frequenciarh"  # Nome do banco de dados
-            
-            # host="127.0.0.1",         # Endereço do servidor MySQL (ou IP interno da intranet)
-            # user="root",             # Usuário do banco de dados
-            # password="",   # Senha do banco de dados
-            # database="sistema_frequenciarh"  # Nome do banco de dados
         )
         
         if connection.is_connected():

@@ -20,6 +20,7 @@ from routes.converte_estagiario import bp_converte_estagiario_pdf
 from routes.send import bp_send_servidor_pdf
 from routes.send_setores import bp_send_setor_pdf
 from routes.visualiza_arquivo_servidor import bp_visualiza_pdf_arquivo
+from routes.converter_setor_estagiarios import bp_converte_setor_estagiario_pdf
 from auth import auth_bp, login_manager  # ✅ Importação correta
 import os
 
@@ -54,12 +55,13 @@ app.register_blueprint(bp_listar_pdfs)
 app.register_blueprint(bp_visualizar_pdf)
 app.register_blueprint(bp_criar_historico)
 app.register_blueprint(bp_buscar_historico)
-app.register_blueprint(bp_buscar_setor_estagiario)
 app.register_blueprint(bp_converte_estagiario_pdf)
 app.register_blueprint(auth_bp)
 app.register_blueprint(bp_send_servidor_pdf)
 app.register_blueprint(bp_send_setor_pdf)
 app.register_blueprint(bp_visualiza_pdf_arquivo)
+app.register_blueprint(bp_buscar_setor_estagiario)
+app.register_blueprint(bp_converte_setor_estagiario_pdf)
 
 @app.route("/")
 def home():
