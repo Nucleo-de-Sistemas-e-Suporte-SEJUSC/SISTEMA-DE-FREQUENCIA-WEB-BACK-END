@@ -84,11 +84,6 @@ def converte_estagiario_pdf():
 
             arquivos_gerados.append(pdf_path)
 
-            # Salva no banco o caminho do PDF
-            cursor.execute(
-                "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)",
-                (estagiario['id'], pdf_path)
-            )
 
         # Cria um arquivo ZIP com todos os PDFs
         zip_path = f"setor/frequencias_{mes_por_extenso}.zip"
