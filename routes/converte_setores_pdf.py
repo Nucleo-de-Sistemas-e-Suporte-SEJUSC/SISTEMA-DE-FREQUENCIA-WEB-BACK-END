@@ -1,73 +1,56 @@
 from utils.convert_to_pdf import convert_to_pdf
+from utils.muda_texto_documento import muda_texto_documento
 from utils.formata_datas import data_atual, pega_final_de_semana, pega_quantidade_dias_mes
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from conection_mysql import connect_mysql
 from mysql.connector import Error
 from docx import Document
-from datetime import datetime, date
 from docx.shared import Pt, Cm
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.enum.table import WD_ROW_HEIGHT_RULE
-from docx.enum.text import WD_PARAGRAPH_ALIGNMENT  # Importa alinhamento de parágrafo
 import os
 import zipfile
+from datetime import datetime, date
 
 bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
 
 @bp_converte_setor_pdf.route('/api/setores/pdf', methods=['POST'])
-def converte_setores_pf():
+def converte_setores_pdf():
     try:
-        # Verifica se o corpo da requisição está presente e é válido
         body = request.json or {}
-        if not body:
-            return jsonify({'erro': 'O corpo da requisição está vazio ou inválido'}), 400
+        setor_nome = body.get('setor')
+        mes_body = body.get('mes')
+        
+        if not setor_nome:
+            return jsonify({'erro': 'Nenhum setor selecionado'}), 400
 
-        # Recupera os dados do corpo da requisição
-        setor = body.get('setor')
-        mes_body = body.get('mes', None)
-
-        # Valida se o setor foi informado
-        if not setor:
-            return jsonify({'erro': 'O campo "setor" é obrigatório'}), 400
-
-        # Conexão com o banco de dados MySQL
-        conexao = connect_mysql()
-        if not conexao:
-            return jsonify({'erro': 'Falha ao conectar ao banco de dados'}), 500
-
-        cursor = conexao.cursor(dictionary=True)
-
-        # Processa a data informada ou usa a data atual
         data_ano_mes_atual = data_atual(mes_body)
         mes_por_extenso = data_ano_mes_atual['mes']
         mes_numerico = data_ano_mes_atual['mes_numerico']
         ano = data_ano_mes_atual['ano']
-            
-        quantidade_dias_no_mes = pega_quantidade_dias_mes(ano, mes_numerico)
 
-        template_path = 'FREQUÊNCIA_MENSAL.docx'
+        conexao = connect_mysql()
+        cursor = conexao.cursor(dictionary=True)
 
-        # Consulta funcionários do setor informado
-        busca_setor = "SELECT * FROM funcionarios WHERE setor = %s"
-        cursor.execute(busca_setor, (setor,))
+        # Busca todos os funcionários do setor especificado
+        query = "SELECT * FROM funcionarios WHERE setor = %s"
+        cursor.execute(query, (setor_nome,))
         funcionarios = cursor.fetchall()
 
-        if len(funcionarios) == 0:
+        if not funcionarios:
             conexao.close()
-            return jsonify({'erro': 'Setor não encontrado ou sem funcionários'}), 404
+            return jsonify({'erro': f'Nenhum funcionário encontrado no setor {setor_nome}'}), 404
 
         arquivos_gerados = []
+        setor_limpo = setor_nome.strip().replace('/', '_')
 
         for funcionario in funcionarios:
-            caminho_pasta = f"setor/{funcionario['setor']}/servidor/{mes_por_extenso}/{funcionario['nome']}"
-            os.makedirs(caminho_pasta, exist_ok=True)
-
-            docx_path = os.path.join(caminho_pasta, f"{funcionario['nome']}_FREQUÊNCIA_MENSAL.docx")
-            pdf_path = os.path.join(caminho_pasta, f"{funcionario['nome']}_FREQUÊNCIA_MENSAL.pdf")
-
-            # Criação do documento Word baseado no template
+            template_path = 'FREQUÊNCIA_MENSAL.docx'
             doc = Document(template_path)
 
-            # Substitui os placeholders pelos valores reais
+            # Preenche os dias do mês
+            preenche_dias_mes(doc, ano, mes_numerico, funcionario)
+
             troca_de_dados = {
                 "CAMPO SETOR": funcionario['setor'],
                 "CAMPO MÊS": mes_por_extenso,
@@ -81,81 +64,127 @@ def converte_setores_pf():
                 "CAMPO FUNÇÃO": str(funcionario.get('funcao', '')),
             }
 
-            for table in doc.tables:
-                for row in table.rows:
-                    for cell in row.cells:
-                        for paragraph in cell.paragraphs:
-                            for placeholder, valor in troca_de_dados.items():
-                                if placeholder in paragraph.text:
-                                    paragraph.text = paragraph.text.replace(placeholder, valor)
+            for placeholder, valor in troca_de_dados.items():
+                muda_texto_documento(doc, placeholder, valor)
 
-            linha_inicial = 9
+            nome_limpo = funcionario['nome'].strip().replace('/', '_')
+            caminho_pasta = f"setores/{setor_limpo}/{mes_por_extenso}"
+            os.makedirs(caminho_pasta, exist_ok=True)
 
-            for table in doc.tables:
-                table.autofit = False
-                
-                for row in table.rows:
-                    row.height = Cm(0.5)
-                    row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-                    
-                    for cell in row.cells:
-                        cell.width = Cm(1.5)
-                        
-                        for paragraph in cell.paragraphs:
-                            for run in paragraph.runs:
-                                run.font.name = "Calibri"
-                                run.font.size = Pt(9)
-
-                if len(table.rows) >= linha_inicial + quantidade_dias_no_mes:
-                    for i in range(quantidade_dias_no_mes):
-                        dia_cell = table.rows[linha_inicial + i].cells[0]
-                        dia_cell.text = str(i + 1)
-
-                        dia_semana = pega_final_de_semana(ano, mes_numerico, i + 1)
-                        
-                        if dia_semana == 5:  # Sábado
-                            for j in [2, 5, 9, 13]:
-                                cell = table.rows[linha_inicial + i].cells[j]
-                                cell.text = "SÁBADO"
-                        elif dia_semana == 6:  # Domingo
-                            for j in [2, 5, 9, 13]:
-                                cell = table.rows[linha_inicial + i].cells[j]
-                                cell.text = "DOMINGO"
-
-                        ferias_inicio = funcionario.get('feriasinicio')
-                        ferias_final = funcionario.get('feriasfinal')
-
-                        if ferias_inicio and ferias_final:
-                            if isinstance(ferias_inicio, datetime):
-                                ferias_inicio = ferias_inicio.date()
-                            if isinstance(ferias_final, datetime):
-                                ferias_final = ferias_final.date()
-                            
-                            dia_atual = date(ano, mes_numerico, i + 1)
-                            if ferias_inicio <= dia_atual <= ferias_final and dia_semana not in [5, 6]:
-                                for j in [2, 5, 9, 13]:
-                                    cell.text = "FÉRIAS"
+            nome_base = f"FREQUENCIA_{nome_limpo.replace(' ', '_')}"
+            docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
+            pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
 
             doc.save(docx_path)
             convert_to_pdf(docx_path, pdf_path)
-
             arquivos_gerados.append(pdf_path)
-            
-        # Cria um arquivo ZIP contendo todos os PDFs gerados
-        zip_path = f"setor/{setor}_{mes_por_extenso}_frequencia_mensal.zip"
+
+            # Salva no banco o caminho do PDF
+            cursor.execute(
+                "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)",
+                (funcionario['id'], pdf_path)
+            )
+
+        # Cria arquivo ZIP com todos os PDFs do setor
+        zip_path = f"setores/{setor_limpo}/frequencias_{setor_limpo}_{mes_por_extenso}.zip"
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for pdf in arquivos_gerados:
-                zipf.write(pdf, os.path.basename(pdf))  # Adiciona o PDF ao ZIP
+                zipf.write(pdf, os.path.basename(pdf))
 
+        # Salva o ZIP no banco
         cursor.execute(
-            "INSERT INTO arquivos_zip (mes, setor, caminho_zip) VALUES (%s, %s, %s)",
-            (mes_por_extenso, setor, zip_path)
+            "INSERT INTO arquivos_zip (setor, mes, caminho_zip, tipo) VALUES (%s, %s, %s, %s)",
+            (setor_nome, mes_por_extenso, zip_path, 'funcionarios')
         )
+
         conexao.commit()
         conexao.close()
 
-        return jsonify({'mensagem': 'Documentos gerados com sucesso!', 'zip_path': zip_path})
-        
-    except Exception as exception:
-        return jsonify({'erro': f'Erro ao conectar ao banco de dados: {str(exception)}'}), 500
+        return send_file(
+            zip_path,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f'frequencias_{setor_limpo}_{mes_por_extenso}.zip'
+        )
 
+    except Exception as exception:
+        if 'conexao' in locals():
+            conexao.close()
+        return jsonify({'erro': f'Erro ao processar setor: {str(exception)}'}), 500
+
+def preenche_dias_mes(doc, ano, mes_numerico, funcionario):
+    """Preenche os dias do mês na tabela do documento"""
+    quantidade_dias_no_mes = pega_quantidade_dias_mes(ano, mes_numerico)
+    linha_inicial = 9  # Linha onde começa a preencher os dias
+
+    for table in doc.tables:
+        # Configuração da tabela
+        table.autofit = False
+        for row in table.rows:
+            row.height = Cm(0.5)
+            row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+            for cell in row.cells:
+                cell.width = Cm(1.5)
+                for paragraph in cell.paragraphs:
+                    for run in paragraph.runs:
+                        run.font.name = "Calibri"
+                        run.font.size = Pt(9)
+                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+        # Preenche os dias do mês
+        if len(table.rows) >= linha_inicial + quantidade_dias_no_mes:
+            for i in range(quantidade_dias_no_mes):
+                dia = i + 1
+                dia_semana = pega_final_de_semana(ano, mes_numerico, dia)
+                row = table.rows[linha_inicial + i]
+                
+                # Limpa células
+                for cell in row.cells:
+                    cell.text = ""
+                    for paragraph in cell.paragraphs:
+                        paragraph.clear()
+                
+                # Preenche dia
+                dia_cell = row.cells[0]
+                dia_paragraph = dia_cell.paragraphs[0]
+                dia_run = dia_paragraph.add_run(str(dia))
+                dia_run.font.name = "Calibri"
+                dia_run.font.size = Pt(9)
+                dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+                # Verifica fins de semana
+                if dia_semana == 5:  # Sábado
+                    for j in [2, 5, 9, 13]:
+                        cell = row.cells[j]
+                        cell.text = "SÁBADO"
+                        for paragraph in cell.paragraphs:
+                            for run in paragraph.runs:
+                                run.font.bold = True
+                            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                elif dia_semana == 6:  # Domingo
+                    for j in [2, 5, 9, 13]:
+                        cell = row.cells[j]
+                        cell.text = "DOMINGO"
+                        for paragraph in cell.paragraphs:
+                            for run in paragraph.runs:
+                                run.font.bold = True
+                            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+                # Verifica férias
+                ferias_inicio = funcionario.get('feriasinicio')
+                ferias_final = funcionario.get('feriasfinal')
+                if ferias_inicio and ferias_final:
+                    if isinstance(ferias_inicio, datetime):
+                        ferias_inicio = ferias_inicio.date()
+                    if isinstance(ferias_final, datetime):
+                        ferias_final = ferias_final.date()
+                    
+                    dia_atual = date(ano, mes_numerico, dia)
+                    if ferias_inicio <= dia_atual <= ferias_final and dia_semana not in [5, 6]:
+                        for j in [2, 5, 9, 13]:
+                            cell = row.cells[j]
+                            cell.text = "FÉRIAS"
+                            for paragraph in cell.paragraphs:
+                                for run in paragraph.runs:
+                                    run.font.bold = True
+                                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER

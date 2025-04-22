@@ -89,8 +89,8 @@ def converte_setor_estagiarios_pdf():
 
         # Salva o ZIP no banco
         cursor.execute(
-            "INSERT INTO arquivos_zip (setor, mes, caminho_zip) VALUES (%s, %s, %s)",
-            (setor_nome, mes_por_extenso, zip_path)
+            "INSERT INTO arquivos_zip (setor, mes, caminho_zip,tipo) VALUES (%s, %s, %s,%s)",
+            (setor_nome, mes_por_extenso, zip_path,'estagiarios')
         )
 
         conexao.commit()

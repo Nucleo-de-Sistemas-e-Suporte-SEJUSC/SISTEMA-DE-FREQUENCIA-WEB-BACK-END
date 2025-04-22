@@ -99,8 +99,8 @@ def converte_servidor_pdf():
 
         # Salva o ZIP no banco
         cursor.execute(
-            "INSERT INTO arquivos_zip (mes, caminho_zip) VALUES (%s, %s)",
-            (mes_por_extenso, zip_path)
+            "INSERT INTO arquivos_zip (mes, caminho_zip,tipo) VALUES (%s, %s,%s)",
+            (mes_por_extenso, zip_path,'servidores')
         )
 
         conexao.commit()
