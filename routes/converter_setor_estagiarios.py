@@ -67,7 +67,7 @@ def converte_setor_estagiarios_pdf():
             caminho_pasta = f"setores/{setor_limpo}/{mes_por_extenso}"
             os.makedirs(caminho_pasta, exist_ok=True)
 
-            nome_base = f"FREQUENCIA_{nome_limpo.replace(' ', '_')}_{estagiario['id']}"
+            nome_base = f"FREQUENCIA_{nome_limpo.replace(' ', '_')}"
             docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
             pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
 
