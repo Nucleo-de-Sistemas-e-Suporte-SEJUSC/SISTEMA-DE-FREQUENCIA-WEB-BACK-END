@@ -1,141 +1,190 @@
 from utils.convert_to_pdf import convert_to_pdf
 from utils.muda_texto_documento import muda_texto_documento
 from utils.formata_datas import data_atual, pega_final_de_semana, pega_quantidade_dias_mes
-from flask import Blueprint, request, jsonify
-from conection import conect
+from flask import Blueprint, request, jsonify, send_file
+from conection_mysql import connect_mysql
 from mysql.connector import Error
 from docx import Document
-from datetime import datetime, date
+from docx.shared import Pt, Cm
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.enum.table import WD_ROW_HEIGHT_RULE
 import os
-import calendar
+import zipfile
+from datetime import datetime, date
 
 bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
 
-@bp_converte_setor_pdf.route('/api/setores/pdf/<setor>', methods=['GET'])
-def converte_setores_pf(setor):
+@bp_converte_setor_pdf.route('/api/setores/pdf', methods=['POST'])
+def converte_setores_pdf():
     try:
-        conexao = conect()
-        cursor = conexao.cursor(dictionary=True)
         body = request.json or {}
-
-        if request.is_json:
-            mes_body = body.get('mes', None)
-
-
-        if mes_body is not None:
-            data_ano_mes_atual = data_atual(mes_body)
-            mes_por_extenso = data_ano_mes_atual['mes']
-            mes_numerico = data_ano_mes_atual['mes_numerico']
-        else: 
-            print(mes_body)
-            data_ano_mes_atual = data_atual(mes_informado_pelo_usuario=None)
-            print(data_ano_mes_atual)
-            mes_por_extenso = data_ano_mes_atual['mes'] 
-            mes_numerico = data_ano_mes_atual['mes_numerico']
-            
-        ano = data_ano_mes_atual['ano']
-        quantidade_dias_no_mes = pega_quantidade_dias_mes(ano,mes_numerico)
-
-        template_path = 'FREQUÊNCIA_MENSAL.docx'
-
-        busca_setor = "SELECT * FROM funcionarios WHERE setor = %s"
-        cursor.execute(busca_setor, (setor,))
-        setores = cursor.fetchall()
-
-        if (len(setores) == 0):
-            conexao.close()
-            return jsonify({'erro': 'Setor não encontrado'}), 404
-
-        dados_setores = []
-
-        linha_inicial = 8       
-
-        for setor in setores:
-
-            troca_dados_setor = {
-                "CAMPO SETOR": setor['setor'],
-                "CAMPO MÊS": data_ano_mes_atual['mes'],
-                "CAMPO NOME": setor['nome'],
-                "CAMPO ANO": str(data_ano_mes_atual['ano']),
-                "CAMPO HORARIO": str(setor['horario']),
-                "CAMPO ENTRADA": str(setor['horarioentrada']),
-                "CAMPO SAÍDA": str(setor['horariosaida']),
-                "CAMPO MATRÍCULA": str(setor['matricula']),
-                "CAMPO CARGO": setor['cargo'],
-                "CAMPO FUNÇÃO": str(setor['funcao']),
-                "FERIAS INICIO": setor['feriasinicio'],
-                "FERIAS TERMINO": setor['feriasfinal'],
-            }
-
-            dados_setores.append(troca_dados_setor)
+        setor_nome = body.get('setor')
+        mes_body = body.get('mes')
         
+        if not setor_nome:
+            return jsonify({'erro': 'Nenhum setor selecionado'}), 400
 
-        def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, setor):
-            linha_inicial = 8
+        data_ano_mes_atual = data_atual(mes_body)
+        mes_por_extenso = data_ano_mes_atual['mes']
+        mes_numerico = data_ano_mes_atual['mes_numerico']
+        ano = data_ano_mes_atual['ano']
 
-            for table in doc.tables:
-                    if len(table.rows) >= linha_inicial + quantidade_dias_no_mes:
-                        for i in range(quantidade_dias_no_mes):
-                            dia_semana = pega_final_de_semana(ano, mes_numerico, i + 1)
-                            dias = i + 1
-                            row = table.rows[linha_inicial + i] 
-                            dia_cell = row.cells[0] 
+        conexao = connect_mysql()
+        cursor = conexao.cursor(dictionary=True)
 
-                            for paragraph in dia_cell.paragraphs: 
-                                dia_cell.text = str(dias)
+        # Busca todos os funcionários do setor especificado
+        query = "SELECT * FROM funcionarios WHERE setor = %s"
+        cursor.execute(query, (setor_nome,))
+        funcionarios = cursor.fetchall()
 
-                            if dia_semana == 5:    
-                                for paragraph in dia_cell.paragraphs:
-                                    row.cells[2].text = "SÁBADO"
-                                    row.cells[5].text = "SÁBADO"
-                                    row.cells[9].text = "SÁBADO"
-                                    row.cells[13].text = "SÁBADO"
-                            elif dia_semana == 6:   
-                                for paragraph in dia_cell.paragraphs:
-                                    row.cells[2].text = "DOMINGO"
-                                    row.cells[5].text = "DOMINGO"
-                                    row.cells[9].text = "DOMINGO"
-                                    row.cells[13].text = "DOMINGO"
+        if not funcionarios:
+            conexao.close()
+            return jsonify({'erro': f'Nenhum funcionário encontrado no setor {setor_nome}'}), 404
 
-                            if setor['FERIAS INICIO'] is not None and setor['FERIAS TERMINO'] is not None:
-                                # Verifica se a data de referência está dentro do período de férias
-                                if setor['FERIAS INICIO'] <= date(ano, mes_numerico, dias) <= setor['FERIAS TERMINO']:
-                                    # Verifica se o dia da semana não é sábado (5) ou domingo (6)
-                                    if dia_semana not in [5, 6]:
-                                        run = paragraph.add_run(str(dias))
-                                        row.cells[2].text = "FÉRIAS"
-                                        row.cells[5].text = "FÉRIAS"
-                                        row.cells[9].text = "FÉRIAS"
-                                        row.cells[13].text = "FÉRIAS"
-                    else:
-                        print(f"A tabela não tem linhas suficientes para os {quantidade_dias_no_mes} dias do mês.")
-                
+        arquivos_gerados = []
+        setor_limpo = setor_nome.strip().replace('/', '_')
 
-
-        for dado_setor in dados_setores:    
+        for funcionario in funcionarios:
+            template_path = 'FREQUÊNCIA_MENSAL.docx'
             doc = Document(template_path)
 
-            gera_dados_celula = cria_dias_da_celula(doc, quantidade_dias_no_mes,ano, mes_numerico, dado_setor)
+            # Preenche os dias do mês
+            preenche_dias_mes(doc, ano, mes_numerico, funcionario)
 
+            troca_de_dados = {
+                "CAMPO SETOR": funcionario['setor'],
+                "CAMPO MÊS": mes_por_extenso,
+                "CAMPO NOME": funcionario['nome'],
+                "CAMPO ANO": str(ano),
+                "CAMPO HORARIO": str(funcionario.get('horario', '')),
+                "CAMPO ENTRADA": str(funcionario.get('horarioentrada', '')),
+                "CAMPO SAÍDA": str(funcionario.get('horariosaida', '')),
+                "CAMPO MATRÍCULA": str(funcionario.get('matricula', '')),
+                "CAMPO CARGO": funcionario.get('cargo', ''),
+                "CAMPO FUNÇÃO": str(funcionario.get('funcao', '')),
+            }
 
-            for placeholder, valor in dado_setor.items():
+            for placeholder, valor in troca_de_dados.items():
                 muda_texto_documento(doc, placeholder, valor)
 
-            caminho_pasta = f"setor/{dado_setor['CAMPO SETOR']}/servidor/{data_ano_mes_atual['mes']}/{dado_setor['CAMPO NOME']}"
+            nome_limpo = funcionario['nome'].strip().replace('/', '_')
+            caminho_pasta = f"setores/{setor_limpo}/{mes_por_extenso}"
+            os.makedirs(caminho_pasta, exist_ok=True)
 
-            if not os.path.exists(caminho_pasta):
-                os.makedirs(caminho_pasta)
-
-            docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{str(dado_setor['CAMPO NOME'])}_FREQUÊNCIA_MENSAL.docx"))
-            pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{str(dado_setor['CAMPO NOME'])}_FREQUÊNCIA_MENSAL.pdf"))
+            nome_base = f"FREQUENCIA_{nome_limpo.replace(' ', '_')}"
+            docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
+            pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
 
             doc.save(docx_path)
-            convert_to_pdf(docx_path, pdf_path)    
+            convert_to_pdf(docx_path, pdf_path)
+            arquivos_gerados.append(pdf_path)
 
-        return jsonify({'mensagem': 'Documentos gerados com sucesso!'}), 200
-        
+            # Salva no banco o caminho do PDF
+            cursor.execute(
+                "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)",
+                (funcionario['id'], pdf_path)
+            )
+
+        # Cria arquivo ZIP com todos os PDFs do setor
+        zip_path = f"setores/{setor_limpo}/frequencias_{setor_limpo}_{mes_por_extenso}.zip"
+        with zipfile.ZipFile(zip_path, 'w') as zipf:
+            for pdf in arquivos_gerados:
+                zipf.write(pdf, os.path.basename(pdf))
+
+        # Salva o ZIP no banco
+        cursor.execute(
+            "INSERT INTO arquivos_zip (setor, mes, caminho_zip, tipo) VALUES (%s, %s, %s, %s)",
+            (setor_nome, mes_por_extenso, zip_path, 'funcionarios')
+        )
+
+        conexao.commit()
+        conexao.close()
+
+        return send_file(
+            zip_path,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=f'frequencias_{setor_limpo}_{mes_por_extenso}.zip'
+        )
+
     except Exception as exception:
-        return jsonify({'erro': f'Erro ao conectar ao banco de dados: {str(exception)}'}), 500
+        if 'conexao' in locals():
+            conexao.close()
+        return jsonify({'erro': f'Erro ao processar setor: {str(exception)}'}), 500
 
+def preenche_dias_mes(doc, ano, mes_numerico, funcionario):
+    """Preenche os dias do mês na tabela do documento"""
+    quantidade_dias_no_mes = pega_quantidade_dias_mes(ano, mes_numerico)
+    linha_inicial = 9  # Linha onde começa a preencher os dias
 
+    for table in doc.tables:
+        # Configuração da tabela
+        table.autofit = False
+        for row in table.rows:
+            row.height = Cm(0.5)
+            row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+            for cell in row.cells:
+                cell.width = Cm(1.5)
+                for paragraph in cell.paragraphs:
+                    for run in paragraph.runs:
+                        run.font.name = "Calibri"
+                        run.font.size = Pt(9)
+                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
+        # Preenche os dias do mês
+        if len(table.rows) >= linha_inicial + quantidade_dias_no_mes:
+            for i in range(quantidade_dias_no_mes):
+                dia = i + 1
+                dia_semana = pega_final_de_semana(ano, mes_numerico, dia)
+                row = table.rows[linha_inicial + i]
+                
+                # Limpa células
+                for cell in row.cells:
+                    cell.text = ""
+                    for paragraph in cell.paragraphs:
+                        paragraph.clear()
+                
+                # Preenche dia
+                dia_cell = row.cells[0]
+                dia_paragraph = dia_cell.paragraphs[0]
+                dia_run = dia_paragraph.add_run(str(dia))
+                dia_run.font.name = "Calibri"
+                dia_run.font.size = Pt(9)
+                dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+                # Verifica fins de semana
+                if dia_semana == 5:  # Sábado
+                    for j in [2, 5, 9, 13]:
+                        cell = row.cells[j]
+                        cell.text = "SÁBADO"
+                        for paragraph in cell.paragraphs:
+                            for run in paragraph.runs:
+                                run.font.bold = True
+                            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                elif dia_semana == 6:  # Domingo
+                    for j in [2, 5, 9, 13]:
+                        cell = row.cells[j]
+                        cell.text = "DOMINGO"
+                        for paragraph in cell.paragraphs:
+                            for run in paragraph.runs:
+                                run.font.bold = True
+                            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+                # Verifica férias
+                ferias_inicio = funcionario.get('feriasinicio')
+                ferias_final = funcionario.get('feriasfinal')
+                if ferias_inicio and ferias_final:
+                    if isinstance(ferias_inicio, datetime):
+                        ferias_inicio = ferias_inicio.date()
+                    if isinstance(ferias_final, datetime):
+                        ferias_final = ferias_final.date()
+                    
+                    dia_atual = date(ano, mes_numerico, dia)
+                    if ferias_inicio <= dia_atual <= ferias_final and dia_semana not in [5, 6]:
+                        for j in [2, 5, 9, 13]:
+                            cell = row.cells[j]
+                            cell.text = "FÉRIAS"
+                            for paragraph in cell.paragraphs:
+                                for run in paragraph.runs:
+                                    run.font.bold = True
+                                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER

@@ -1,5 +1,6 @@
 from datetime import datetime, date
 import calendar
+import re
 
 def data_atual(mes_informado_pelo_usuario=None):
     meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]

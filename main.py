@@ -1,31 +1,75 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 from mysql.connector import Error
-from routes import bp as routes_bp  # Importa o Blueprint definido em routes/__init__.py
-from routes.criar_servidor import  bp_criar_servidor
+from routes import bp as routes_bp
+from routes.criar_servidor import bp_criar_servidor
 from routes.converte_servidor_pdf import bp_converte_servidor_pdf
 from routes.converte_setores_pdf import bp_converte_setor_pdf
-from flask_cors import CORS 
-#from routes.deletar_servidores import bp_deletar_servidor
+from flask_cors import CORS
 from routes.atualizar_servidores import bp_atualizar_servidor
 from routes.arquivar import bp_arquivar_servidor
-from routes.ativar_servidor import bp_atualizar_servidor_status
+from routes.ativar_servidor import bp_ativar_servidor_status
 from routes.buscar_arquivados import bp_buscar_servidores_arquivados
+from routes.buscar_estagiarios import bp_buscar_estagiarios
+from routes.buscar_setor import bp_buscar_setor
+from routes.listar_pdfs import bp_listar_pdfs
+from routes.visualizar_pdf import bp_visualizar_pdf
+from routes.busca_setor_estagiario import bp_buscar_setor_estagiario
+from routes.historico_logs.criar_historico import bp_criar_historico
+from routes.historico_logs.buscar_historico import bp_buscar_historico
+from routes.converte_estagiario import bp_converte_estagiario_pdf
+from routes.send import bp_send_servidor_pdf
+from routes.send_setores import bp_send_setor_pdf
+from routes.visualiza_arquivo_servidor import bp_visualiza_pdf_arquivo
+from routes.converter_setor_estagiarios import bp_converte_setor_estagiario_pdf
+from routes.visualiza_arquivo_estagiario import bp_visualiza_pdf_arquivo_estagiario
+from routes.listar_pdfs_estagiarios import bp_listar_pdfs_estagiarios
+from auth import auth_bp, login_manager  # ✅ Importação correta
+import os
 
 app = Flask(__name__)
-CORS(app)  # Habilita o CORS na aplicação
 
-app.register_blueprint(routes_bp) # busca todos os servidores
-app.register_blueprint(bp_criar_servidor) # cria um servidor
-app.register_blueprint(bp_converte_servidor_pdf) # converte um servidor em pdf
-app.register_blueprint(bp_converte_setor_pdf) #convert um setor em pdf
-#app.register_blueprint(bp_deletar_servidor)
-app.register_blueprint(bp_atualizar_servidor) # atualiza um servidor
+CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
+
+# Adicionando os cabeçalhos CORS para todas as respostas
+@app.after_request
+def after_request(response):
+    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'  # Permitir o front-end
+    response.headers['Access-Control-Allow-Credentials'] = 'true'  # Permitir credenciais (cookies)
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PATCH, OPTIONS'  # Métodos permitidos
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'  # Cabeçalhos permitidos
+    return response
+
+login_manager.init_app(app)
+app.secret_key = 'sa3fab861d0da4efd62c6f2aff0649b5e'
+
+# Registro dos Blueprints
+app.register_blueprint(routes_bp)
+app.register_blueprint(bp_criar_servidor)
+app.register_blueprint(bp_converte_servidor_pdf)
+app.register_blueprint(bp_converte_setor_pdf)
+app.register_blueprint(bp_atualizar_servidor)
 app.register_blueprint(bp_arquivar_servidor)
-app.register_blueprint(bp_atualizar_servidor_status)
+app.register_blueprint(bp_ativar_servidor_status)
 app.register_blueprint(bp_buscar_servidores_arquivados)
+app.register_blueprint(bp_buscar_estagiarios)
+app.register_blueprint(bp_buscar_setor)
+app.register_blueprint(bp_listar_pdfs)
+app.register_blueprint(bp_visualizar_pdf)
+app.register_blueprint(bp_criar_historico)
+app.register_blueprint(bp_buscar_historico)
+app.register_blueprint(bp_converte_estagiario_pdf)
+app.register_blueprint(auth_bp)
+app.register_blueprint(bp_send_servidor_pdf)
+app.register_blueprint(bp_send_setor_pdf)
+app.register_blueprint(bp_visualiza_pdf_arquivo)
+app.register_blueprint(bp_buscar_setor_estagiario)
+app.register_blueprint(bp_converte_setor_estagiario_pdf)
+app.register_blueprint(bp_visualiza_pdf_arquivo_estagiario)
+app.register_blueprint(bp_listar_pdfs_estagiarios)
 
 @app.route("/")
 def home():
-    return "Bem vindo ao sistema de frequencia do rh!"
+    return "Bem-vindo ao sistema de frequência do RH!"
 
-app.run(host= "0.0.0.0", port=3000, debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=3000, debug=True)
