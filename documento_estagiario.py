@@ -14,6 +14,7 @@ def enviar_template(caminho_arquivo):
     with open(caminho_arquivo, "rb") as file:
         conteudo = file.read()
 
+
     conexao = connect_mysql()  # Corrigido: Nome correto da função
     if not conexao: 
         print("Erro: Não foi possível conectar ao banco.")

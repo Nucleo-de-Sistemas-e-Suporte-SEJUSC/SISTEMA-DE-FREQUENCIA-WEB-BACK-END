@@ -12,8 +12,8 @@ bp_criar_servidor = Blueprint('bp_criar_servidor', __name__)
 
 
 @bp_criar_servidor.route('/api/servidores', methods=['POST'])
-@login_required
-@roles_required('admin','editor')
+#@login_required
+#@roles_required('admin','editor')
 def criar_servidor():
     try:
         conexao = connect_mysql()

@@ -68,7 +68,7 @@ def converte_setores_pdf():
                 muda_texto_documento(doc, placeholder, valor)
 
             nome_limpo = funcionario['nome'].strip().replace('/', '_')
-            caminho_pasta = f"setores/{setor_limpo}/{mes_por_extenso}"
+            caminho_pasta = f"setor/{setor_limpo}/{mes_por_extenso}"
             os.makedirs(caminho_pasta, exist_ok=True)
 
             nome_base = f"FREQUENCIA_{nome_limpo.replace(' ', '_')}"
@@ -86,7 +86,7 @@ def converte_setores_pdf():
             )
 
         # Cria arquivo ZIP com todos os PDFs do setor
-        zip_path = f"setores/{setor_limpo}/frequencias_{setor_limpo}_{mes_por_extenso}.zip"
+        zip_path = f"setor/{setor_limpo}/frequencias_{setor_limpo}_{mes_por_extenso}.zip"
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for pdf in arquivos_gerados:
                 zipf.write(pdf, os.path.basename(pdf))

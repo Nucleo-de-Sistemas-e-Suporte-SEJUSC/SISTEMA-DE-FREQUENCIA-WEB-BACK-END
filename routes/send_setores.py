@@ -11,7 +11,6 @@ def download_zip(setor, mes):
     try:
         # Normaliza o mês para garantir a primeira letra maiúscula
         mes_formatado = mes.capitalize()
-        print(f"Setor recebido: {setor}, Mês formatado: {mes_formatado}")
 
         # Verifica se a rota chamada é a de estagiários
         is_estagiarios = 'estagiarios' in request.path.lower()
@@ -31,7 +30,7 @@ def download_zip(setor, mes):
                 "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND (tipo IS NULL OR tipo != 'estagiarios')", 
                 (setor, mes_formatado)
             )
-            download_prefix = 'frequencia_mensal'
+            download_prefix = 'frequencias'
 
         result = cursor.fetchone()
         
@@ -40,7 +39,8 @@ def download_zip(setor, mes):
             print(error_msg)
             return jsonify({'erro': error_msg}), 404
 
-        zip_path = result['caminho_zip']
+        zip_path = f"setor/{setor}/{download_prefix}_{setor}_{mes_formatado}.zip"
+        print(f"Caminho do arquivo ZIP: {zip_path}")
         
         # Verifica se o caminho existe (com tratamento multiplataforma para barras)
         zip_path_verified = os.path.normpath(zip_path)
