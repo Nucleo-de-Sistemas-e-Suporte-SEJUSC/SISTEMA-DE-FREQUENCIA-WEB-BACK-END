@@ -23,6 +23,7 @@ from routes.visualiza_arquivo_servidor import bp_visualiza_pdf_arquivo
 from routes.converter_setor_estagiarios import bp_converte_setor_estagiario_pdf
 from routes.visualiza_arquivo_estagiario import bp_visualiza_pdf_arquivo_estagiario
 from routes.listar_pdfs_estagiarios import bp_listar_pdfs_estagiarios
+from routes.criar_estagiario import bp_criar_estagiario
 from auth import auth_bp, login_manager  # ✅ Importação correta
 import os
 
@@ -66,7 +67,7 @@ app.register_blueprint(bp_buscar_setor_estagiario)
 app.register_blueprint(bp_converte_setor_estagiario_pdf)
 app.register_blueprint(bp_visualiza_pdf_arquivo_estagiario)
 app.register_blueprint(bp_listar_pdfs_estagiarios)
-
+app.register_blueprint(bp_criar_estagiario)
 @app.route("/")
 def home():
     return "Bem-vindo ao sistema de frequência do RH!"
