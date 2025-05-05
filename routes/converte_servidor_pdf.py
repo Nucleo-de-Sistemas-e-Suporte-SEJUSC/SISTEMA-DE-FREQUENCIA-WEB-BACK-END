@@ -70,7 +70,6 @@ def converte_servidor_pdf():
 
             for placeholder, valor in troca_de_dados.items():
                 muda_texto_documento(doc, placeholder, valor)
-            
             nome_limpo = funcionario['nome'].strip()
             setor_limpo = funcionario['setor'].strip()
             caminho_pasta = f"setor/{setor_limpo}/servidor/{mes_por_extenso}/{nome_limpo}"
@@ -85,17 +84,19 @@ def converte_servidor_pdf():
 
             arquivos_gerados.append(pdf_path)
 
-            # Salva no banco o caminho do PDF
-            cursor.execute(
-                "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)",
-                (funcionario['id'], pdf_path)
-            )
 
-        # Cria um arquivo ZIP com todos os PDFs
-        zip_path = f"setor/frequencias_{mes_por_extenso}.zip"
+
+             # Cria um arquivo ZIP com todos os PDFs
+            zip_path = f"setor/frequencias_{mes_por_extenso}.zip"
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for pdf in arquivos_gerados:
                 zipf.write(pdf, os.path.basename(pdf))
+
+            # Salva no banco o caminho do PDF
+            #cursor.execute(
+                #"INSERT INTO arquivos_zip (servidor_id, caminho_pdf) VALUES (%s, %s)",
+                #(funcionario['id'], pdf_path)
+            #)
 
         # Salva o ZIP no banco
         cursor.execute(

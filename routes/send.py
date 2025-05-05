@@ -44,7 +44,7 @@ def download_zip(mes, tipo):
     # Rota para servidores (mantém a existente)
 @bp_send_servidor_pdf.route('/api/servidores/pdf/download-zip/<mes>', methods=['GET'])
 def download_zip_servidores(mes):
-    return download_zip(mes, 'servidor')
+    return download_zip(mes, 'servidores')
 
 # Nova rota para estagiários
 @bp_send_servidor_pdf.route('/api/estagiarios/pdf/download-zip/<mes>', methods=['GET'])

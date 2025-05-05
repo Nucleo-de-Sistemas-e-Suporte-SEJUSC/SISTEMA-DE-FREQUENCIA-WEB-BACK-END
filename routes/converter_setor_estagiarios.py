@@ -1,6 +1,6 @@
 from utils.convert_to_pdf import convert_to_pdf
 from utils.muda_texto_documento import muda_texto_documento
-from utils.formata_datas import data_atual, pega_final_de_semana
+from utils.formata_datas import data_atual, pega_final_de_semana, pega_quantidade_dias_mes
 from flask import Blueprint, request, jsonify, send_file
 from conection_mysql import connect_mysql
 from mysql.connector import Error
@@ -27,6 +27,7 @@ def converte_setor_estagiarios_pdf():
         mes_por_extenso = data_ano_mes_atual['mes']
         mes_numerico = data_ano_mes_atual['mes_numerico']
         ano = data_ano_mes_atual['ano']
+        #quantidade_dias_no_mes = pega_quantidade_dias_mes(ano, mes_numerico)
 
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
@@ -47,7 +48,7 @@ def converte_setor_estagiarios_pdf():
             template_path = 'FREQUÊNCIA ESTAGIÁRIOS - MODELO.docx'
             doc = Document(template_path)
 
-            cria_dias_da_celula(doc, ano, mes_numerico, estagiario)
+            cria_dias_da_celula(doc,ano, mes_numerico, estagiario)
 
             troca_de_dados = {
                 "CAMPO SETOR": estagiario['setor'],
@@ -64,7 +65,7 @@ def converte_setor_estagiarios_pdf():
                 muda_texto_documento(doc, placeholder, valor)
 
             nome_limpo = estagiario['nome'].strip().replace('/', '_')
-            caminho_pasta = f"setores/{setor_limpo}/{mes_por_extenso}"
+            caminho_pasta = f"setor/{setor_limpo}/{mes_por_extenso}"
             os.makedirs(caminho_pasta, exist_ok=True)
 
             nome_base = f"FREQUENCIA_{nome_limpo.replace(' ', '_')}"
@@ -82,7 +83,7 @@ def converte_setor_estagiarios_pdf():
             )
 
         # Cria arquivo ZIP com todos os PDFs do setor
-        zip_path = f"setores/{setor_limpo}/frequencias_{setor_limpo}_{mes_por_extenso}.zip"
+        zip_path = f"setor/{setor_limpo}/frequencias_{setor_limpo}_{mes_por_extenso}.zip"
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for pdf in arquivos_gerados:
                 zipf.write(pdf, os.path.basename(pdf))
@@ -107,6 +108,7 @@ def converte_setor_estagiarios_pdf():
         if 'conexao' in locals():
             conexao.close()
         return jsonify({'erro': f'Erro ao processar setor: {str(exception)}'}), 500
+
 def cria_dias_da_celula(doc, ano, mes_numerico, estagiario):
     from datetime import datetime, timedelta, date
 

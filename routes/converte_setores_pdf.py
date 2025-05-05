@@ -28,6 +28,7 @@ def converte_setores_pdf():
         mes_por_extenso = data_ano_mes_atual['mes']
         mes_numerico = data_ano_mes_atual['mes_numerico']
         ano = data_ano_mes_atual['ano']
+        quantidade_dias_no_mes = pega_quantidade_dias_mes(ano, mes_numerico) 
 
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
@@ -49,7 +50,7 @@ def converte_setores_pdf():
             doc = Document(template_path)
 
             # Preenche os dias do mês
-            preenche_dias_mes(doc, ano, mes_numerico, funcionario)
+            cria_dias_da_celula(doc, quantidade_dias_no_mes,ano, mes_numerico, funcionario)
 
             troca_de_dados = {
                 "CAMPO SETOR": funcionario['setor'],
@@ -112,79 +113,88 @@ def converte_setores_pdf():
             conexao.close()
         return jsonify({'erro': f'Erro ao processar setor: {str(exception)}'}), 500
 
-def preenche_dias_mes(doc, ano, mes_numerico, funcionario):
-    """Preenche os dias do mês na tabela do documento"""
-    quantidade_dias_no_mes = pega_quantidade_dias_mes(ano, mes_numerico)
-    linha_inicial = 9  # Linha onde começa a preencher os dias
+def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario):
+    from datetime import date
+
+    linha_inicial = 8  # Ajuste conforme necessário
 
     for table in doc.tables:
-        # Configuração da tabela
-        table.autofit = False
+        # Configurar linhas existentes
         for row in table.rows:
             row.height = Cm(0.5)
             row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
             for cell in row.cells:
-                cell.width = Cm(1.5)
                 for paragraph in cell.paragraphs:
+                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                     for run in paragraph.runs:
                         run.font.name = "Calibri"
-                        run.font.size = Pt(9)
+                        run.font.size = Pt(7)
+                        run.font.bold = False
+
+        # Validação de linhas
+        if len(table.rows) < linha_inicial + quantidade_dias_no_mes:
+            # Adiciona linhas extras se necessário
+            for _ in range(linha_inicial + quantidade_dias_no_mes - len(table.rows)):
+                new_row = table.add_row()
+                for cell in new_row.cells:
+                    cell.width = Cm(1.5)
+                    for paragraph in cell.paragraphs:
                         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-        # Preenche os dias do mês
-        if len(table.rows) >= linha_inicial + quantidade_dias_no_mes:
-            for i in range(quantidade_dias_no_mes):
-                dia = i + 1
-                dia_semana = pega_final_de_semana(ano, mes_numerico, dia)
-                row = table.rows[linha_inicial + i]
-                
-                # Limpa células
-                for cell in row.cells:
-                    cell.text = ""
+        # Preenchimento dos dias
+        for i in range(quantidade_dias_no_mes):
+            dia = i + 1
+            dia_semana = pega_final_de_semana(ano, mes_numerico, dia)
+            row = table.rows[linha_inicial + i]
+            
+            # Limpa células antes de preencher
+            for cell in row.cells:
+                cell.text = ""
+                for paragraph in cell.paragraphs:
+                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                    paragraph.clear()
+            
+            # Preenche dia
+            dia_cell = row.cells[0]
+            dia_paragraph = dia_cell.paragraphs[0]
+            dia_run = dia_paragraph.add_run(str(dia))
+            dia_run.font.name = "Calibri"
+            dia_run.font.size = Pt(8)
+            dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+            # Verifica fins de semana
+            if dia_semana == 5:    # Sábado
+                texto = "SÁBADO"
+                for j in [2, 5, 9, 13]:  # Células para marcar sábado
+                    cell = row.cells[j]
+                    cell.text = texto
                     for paragraph in cell.paragraphs:
-                        paragraph.clear()
-                
-                # Preenche dia
-                dia_cell = row.cells[0]
-                dia_paragraph = dia_cell.paragraphs[0]
-                dia_run = dia_paragraph.add_run(str(dia))
-                dia_run.font.name = "Calibri"
-                dia_run.font.size = Pt(9)
-                dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                        for run in paragraph.runs:
+                            run.font.bold = True
+                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-                # Verifica fins de semana
-                if dia_semana == 5:  # Sábado
-                    for j in [2, 5, 9, 13]:
+            elif dia_semana == 6:   # Domingo
+                texto = "DOMINGO"
+                for j in [2, 5, 9, 13]:  # Células para marcar domingo
+                    cell = row.cells[j]
+                    cell.text = texto
+                    for paragraph in cell.paragraphs:
+                        for run in paragraph.runs:
+                            run.font.bold = True
+                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                        
+            # Verifica férias
+            if funcionario.get('feriasinicio') and funcionario.get('feriasfinal'):
+                ferias_inicio = funcionario['feriasinicio'].date() if hasattr(funcionario['feriasinicio'], 'date') else funcionario['feriasinicio']
+                ferias_final = funcionario['feriasfinal'].date() if hasattr(funcionario['feriasfinal'], 'date') else funcionario['feriasfinal']
+                data_atual = date(ano, mes_numerico, dia)
+
+                if ferias_inicio <= data_atual <= ferias_final and dia_semana not in [5, 6]:
+                    texto = "FÉRIAS"
+                    for j in [2, 5, 9, 13]:  # Células para marcar férias
                         cell = row.cells[j]
-                        cell.text = "SÁBADO"
+                        cell.text = texto
                         for paragraph in cell.paragraphs:
                             for run in paragraph.runs:
                                 run.font.bold = True
                             paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                elif dia_semana == 6:  # Domingo
-                    for j in [2, 5, 9, 13]:
-                        cell = row.cells[j]
-                        cell.text = "DOMINGO"
-                        for paragraph in cell.paragraphs:
-                            for run in paragraph.runs:
-                                run.font.bold = True
-                            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-
-                # Verifica férias
-                ferias_inicio = funcionario.get('feriasinicio')
-                ferias_final = funcionario.get('feriasfinal')
-                if ferias_inicio and ferias_final:
-                    if isinstance(ferias_inicio, datetime):
-                        ferias_inicio = ferias_inicio.date()
-                    if isinstance(ferias_final, datetime):
-                        ferias_final = ferias_final.date()
-                    
-                    dia_atual = date(ano, mes_numerico, dia)
-                    if ferias_inicio <= dia_atual <= ferias_final and dia_semana not in [5, 6]:
-                        for j in [2, 5, 9, 13]:
-                            cell = row.cells[j]
-                            cell.text = "FÉRIAS"
-                            for paragraph in cell.paragraphs:
-                                for run in paragraph.runs:
-                                    run.font.bold = True
-                                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
