@@ -1,3 +1,4 @@
+#from utils.valida_ambiente_inux import valida_ambiente_pdf_linux
 from utils.convert_to_pdf import convert_to_pdf
 from utils.muda_texto_documento import muda_texto_documento
 from utils.formata_datas import data_atual, pega_final_de_semana, pega_quantidade_dias_mes
