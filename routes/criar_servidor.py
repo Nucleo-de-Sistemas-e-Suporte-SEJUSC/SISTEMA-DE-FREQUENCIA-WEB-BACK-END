@@ -26,7 +26,7 @@ def criar_servidor():
 
 
         setor = body.get('setor')
-        nome = body.get('nome')
+        nome = body.get('nome')                                                                 
         matricula = body.get('matricula')
         cargo = body.get('cargo')
         funcao = body.get('funcao')
@@ -35,6 +35,15 @@ def criar_servidor():
         horariosaida = body.get('saida')
         feriasinicio = body.get('feriasinicio')
         feriasfinal = body.get('feriasfinal')
+        dataNascimento = body.get('data_nascimento')
+        sexo = body.get('sexo')
+        estadoCivil = body.get('estado_civil')
+        naturalidade = body.get('naturalidade')
+        nacionalidade = body.get('nacionalidade')
+        identidade = body.get('identidade')
+        tituloEleitor = body.get('titulo_eleitor')
+        cpf = body.get('cpf')
+        pis = body.get('pis')
 
         verifica_se_servidor_existe = "SELECT * FROM funcionarios WHERE nome = %s"
         cursor.execute(verifica_se_servidor_existe, (nome,))
@@ -45,10 +54,10 @@ def criar_servidor():
             return jsonify({'erro': 'Servidor já cadastrado'}), 409
 
         criar_dados_servidor = """
-            INSERT INTO funcionarios (setor, nome, matricula, cargo, funcao, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO funcionarios (setor, nome, matricula, cargo, funcao, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s,%s,%s)
         """
-        cursor.execute(criar_dados_servidor, (setor, nome, matricula, cargo, funcao, horario,horarioentrada, horariosaida, feriasinicio, feriasfinal,))
+        cursor.execute(criar_dados_servidor, (setor, nome, matricula, cargo, funcao, horario,horarioentrada, horariosaida, feriasinicio, feriasfinal,dataNascimento, sexo, estadoCivil, naturalidade, nacionalidade, identidade, tituloEleitor, cpf, pis))
         conexao.commit()
         conexao.close()
         
@@ -63,8 +72,16 @@ def criar_servidor():
             "entrada": horarioentrada,
             "saida": horariosaida,
             "feriasinicio": feriasinicio,
-            "feriastermino": feriasfinal
-
+            "feriastermino": feriasfinal,
+            "data_nascimento": dataNascimento,
+            "sexo": sexo,
+            'estado_civil': estadoCivil,
+            "naturalidade": naturalidade,
+            "nacionalidade": nacionalidade,
+            "identidade": identidade,
+            "titulo_eleitor": tituloEleitor,
+            "cpf": cpf,
+            "pis": pis
         } 
 
         return jsonify({'servidor': dados_retornados}), 201
