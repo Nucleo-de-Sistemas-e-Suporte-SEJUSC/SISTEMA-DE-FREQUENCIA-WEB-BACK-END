@@ -44,6 +44,7 @@ def criar_servidor():
         tituloEleitor = body.get('titulo_eleitor')
         cpf = body.get('cpf')
         pis = body.get('pis')
+        
 
         verifica_se_servidor_existe = "SELECT * FROM funcionarios WHERE nome = %s"
         cursor.execute(verifica_se_servidor_existe, (nome,))
