@@ -35,7 +35,8 @@ schema = {
     "identidade": {"type": "string", "required": False},
     "titulo_eleitor": {"type": "string", "required": False},
     "cpf": {"type": "string", "required": False, "minlength": 11, "maxlength": 11},
-    "pis": {"type": "string", "required": False}
+    "pis": {"type": "string", "required": False},
+    "data_admissao": {"type": "string", "required": False, "check_with": validate_date}
 }
 
 validator = Validator(schema)

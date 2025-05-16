@@ -62,7 +62,7 @@ def converte_setores_pdf():
                 "CAMPO SAÍDA": str(funcionario.get('horariosaida', '')),
                 "CAMPO MATRÍCULA": str(funcionario.get('matricula', '')),
                 "CAMPO CARGO": funcionario.get('cargo', ''),
-                "CAMPO FUNÇÃO": str(funcionario.get('funcao', '')),
+                #"CAMPO FUNÇÃO": str(funcionario.get('funcao', '')),
             }
 
             for placeholder, valor in troca_de_dados.items():
