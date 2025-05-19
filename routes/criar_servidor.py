@@ -36,7 +36,7 @@ def criar_servidor():
         nome = body.get('nome')
         matricula = body.get('matricula')
         cargo = body.get('cargo')
-        funcao = body.get('funcao')
+        #funcao = body.get('funcao')
         horario = body.get('horario')
         horarioentrada = body.get('entrada')
         horariosaida = body.get('saida')
@@ -51,6 +51,7 @@ def criar_servidor():
         tituloEleitor = body.get('titulo_eleitor')
         cpf = body.get('cpf')
         pis = body.get('pis')
+        dataAdmissao = body.get('data_admissao')
 
         # Verifica duplicidade
         try:
@@ -65,11 +66,11 @@ def criar_servidor():
         # Inserção
         try:
             criar_dados_servidor = """
-                INSERT INTO funcionarios (setor, nome, matricula, cargo, funcao, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO funcionarios (setor, nome, matricula, cargo,dataAdmissao, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
             """
             cursor.execute(criar_dados_servidor, (
-                setor, nome, matricula, cargo, funcao, horario, horarioentrada, horariosaida,
+                setor, nome, matricula, cargo, horario,dataAdmissao, horarioentrada, horariosaida,
                 feriasinicio, feriasfinal, dataNascimento, sexo, estadoCivil, naturalidade,
                 nacionalidade, identidade, tituloEleitor, cpf, pis
             ))
@@ -83,7 +84,8 @@ def criar_servidor():
             "nome": nome,
             "matricula": matricula,
             "cargo": cargo,
-            "funcao": funcao,
+            "data_admissao": dataAdmissao,
+            #"funcao": funcao,
             "horario": horario,
             "entrada": horarioentrada,
             "saida": horariosaida,

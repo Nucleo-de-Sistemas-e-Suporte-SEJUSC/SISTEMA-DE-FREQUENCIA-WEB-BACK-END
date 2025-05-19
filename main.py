@@ -24,20 +24,28 @@ from routes.converter_setor_estagiarios import bp_converte_setor_estagiario_pdf
 from routes.visualiza_arquivo_estagiario import bp_visualiza_pdf_arquivo_estagiario
 from routes.listar_pdfs_estagiarios import bp_listar_pdfs_estagiarios
 from routes.criar_estagiario import bp_criar_estagiario
+from routes.arquivar_estagiario import bp_arquivar_estagiario
+from routes.ativar_estagiario   import bp_ativar_estagiario
 from auth import auth_bp, login_manager  # ✅ Importação correta
 import os
 
 app = Flask(__name__)
+# Configura CORS uma única vez com os dois domínios permitidos
+CORS(app, supports_credentials=True, origins=[
+    "http://localhost:5173",
+    "http://localhost:8080",
+    "http://12.90.4.88:8080"
+    
+])
 
-CORS(app, supports_credentials=True, origins=["http://localhost:5173"])
-
-# Adicionando os cabeçalhos CORS para todas as respostas
+# Adiciona os cabeçalhos extras corretamente (sem sobrescrever)
 @app.after_request
 def after_request(response):
-    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'  # Permitir o front-end
-    response.headers['Access-Control-Allow-Credentials'] = 'true'  # Permitir credenciais (cookies)
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PATCH, OPTIONS'  # Métodos permitidos
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'  # Cabeçalhos permitidos
+    origin = response.headers.get('Access-Control-Allow-Origin')
+    if origin:
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PATCH, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     return response
 
 login_manager.init_app(app)
@@ -68,6 +76,8 @@ app.register_blueprint(bp_converte_setor_estagiario_pdf)
 app.register_blueprint(bp_visualiza_pdf_arquivo_estagiario)
 app.register_blueprint(bp_listar_pdfs_estagiarios)
 app.register_blueprint(bp_criar_estagiario)
+app.register_blueprint(bp_arquivar_estagiario)
+app.register_blueprint(bp_ativar_estagiario)
 @app.route("/")
 def home():
     return "Bem-vindo ao sistema de frequência do RH!"
