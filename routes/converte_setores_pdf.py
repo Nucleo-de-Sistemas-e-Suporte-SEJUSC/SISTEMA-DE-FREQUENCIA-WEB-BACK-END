@@ -18,83 +18,84 @@ bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
 def converte_setores_pdf():
     try:
         body = request.json or {}
-        setores = body.get('setores') or []
+        setor_nome = body.get('setor')
         mes_body = body.get('mes')
-
-        if not setores or not isinstance(setores, list):
-            return jsonify({'erro': 'Nenhum setor selecionado ou formato inválido'}), 400
+        
+        if not setor_nome:
+            return jsonify({'erro': 'Nenhum setor selecionado'}), 400
 
         data_ano_mes_atual = data_atual(mes_body)
         mes_por_extenso = data_ano_mes_atual['mes']
         mes_numerico = data_ano_mes_atual['mes_numerico']
         ano = data_ano_mes_atual['ano']
-        quantidade_dias_no_mes = pega_quantidade_dias_mes(ano, mes_numerico)
+        quantidade_dias_no_mes = pega_quantidade_dias_mes(ano, mes_numerico) 
 
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
+        # Busca todos os funcionários do setor especificado
+        query = "SELECT * FROM funcionarios WHERE setor = %s"
+        cursor.execute(query, (setor_nome,))
+        funcionarios = cursor.fetchall()
+
+        if not funcionarios:
+            conexao.close()
+            return jsonify({'erro': f'Nenhum funcionário encontrado no setor {setor_nome}'}), 404
+
         arquivos_gerados = []
+        setor_limpo = setor_nome.strip().replace('/', '_')
 
-        for setor_nome in setores:
-            # Busca todos os funcionários do setor especificado
-            query = "SELECT * FROM funcionarios WHERE setor = %s"
-            cursor.execute(query, (setor_nome,))
-            funcionarios = cursor.fetchall()
+        for funcionario in funcionarios:
+            template_path = 'FREQUÊNCIA_MENSAL.docx'
+            doc = Document(template_path)
 
-            if not funcionarios:
-                continue  # Pula setor vazio
+            # Preenche os dias do mês
+            cria_dias_da_celula(doc, quantidade_dias_no_mes,ano, mes_numerico, funcionario)
 
-            setor_limpo = setor_nome.strip().replace('/', '_')
+            troca_de_dados = {
+                "CAMPO SETOR": funcionario['setor'],
+                "CAMPO MÊS": mes_por_extenso,
+                "CAMPO NOME": funcionario['nome'],
+                "CAMPO ANO": str(ano),
+                "CAMPO HORARIO": str(funcionario.get('horario', '')),
+                "CAMPO ENTRADA": str(funcionario.get('horarioentrada', '')),
+                "CAMPO SAÍDA": str(funcionario.get('horariosaida', '')),
+                "CAMPO MATRÍCULA": str(funcionario.get('matricula', '')),
+                "CAMPO CARGO": funcionario.get('cargo', ''),
+                #"CAMPO FUNÇÃO": str(funcionario.get('funcao', '')),
+            }
 
-            for funcionario in funcionarios:
-                template_path = 'FREQUÊNCIA_MENSAL.docx'
-                doc = Document(template_path)
+            for placeholder, valor in troca_de_dados.items():
+                muda_texto_documento(doc, placeholder, valor)
 
-                cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario)
+            nome_limpo = funcionario['nome'].strip().replace('/', '_')
+            caminho_pasta = f"setor/{setor_limpo}/{mes_por_extenso}"
+            os.makedirs(caminho_pasta, exist_ok=True)
 
-                troca_de_dados = {
-                    "CAMPO SETOR": funcionario['setor'],
-                    "CAMPO MÊS": mes_por_extenso,
-                    "CAMPO NOME": funcionario['nome'],
-                    "CAMPO ANO": str(ano),
-                    "CAMPO HORARIO": str(funcionario.get('horario', '')),
-                    "CAMPO ENTRADA": str(funcionario.get('horarioentrada', '')),
-                    "CAMPO SAÍDA": str(funcionario.get('horariosaida', '')),
-                    "CAMPO MATRÍCULA": str(funcionario.get('matricula', '')),
-                    "CAMPO CARGO": funcionario.get('cargo', ''),
-                }
+            nome_base = f"FREQUENCIA_{nome_limpo.replace(' ', '_')}"
+            docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
+            pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
 
-                for placeholder, valor in troca_de_dados.items():
-                    muda_texto_documento(doc, placeholder, valor)
+            doc.save(docx_path)
+            convert_to_pdf(docx_path, pdf_path)
+            arquivos_gerados.append(pdf_path)
 
-                nome_limpo = funcionario['nome'].strip().replace('/', '_')
-                caminho_pasta = f"setor/{setor_limpo}/{mes_por_extenso}"
-                os.makedirs(caminho_pasta, exist_ok=True)
+            # Salva no banco o caminho do PDF
+            cursor.execute(
+                "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)",
+                (funcionario['id'], pdf_path)
+            )
 
-                nome_base = f"FREQUENCIA_{nome_limpo.replace(' ', '_')}"
-                docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
-                pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
-
-                doc.save(docx_path)
-                convert_to_pdf(docx_path, pdf_path)
-                arquivos_gerados.append(pdf_path)
-
-                # Salva no banco o caminho do PDF
-                cursor.execute(
-                    "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)",
-                    (funcionario['id'], pdf_path)
-                )
-
-        # Cria arquivo ZIP único com todos os PDFs gerados
-        zip_path = f"setor/frequencias_multissetores_{mes_por_extenso}.zip"
+        # Cria arquivo ZIP com todos os PDFs do setor
+        zip_path = f"setor/{setor_limpo}/frequencias_{setor_limpo}_{mes_por_extenso}.zip"
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for pdf in arquivos_gerados:
-                zipf.write(pdf, os.path.relpath(pdf, 'setor'))
+                zipf.write(pdf, os.path.basename(pdf))
 
         # Salva o ZIP no banco
         cursor.execute(
             "INSERT INTO arquivos_zip (setor, mes, caminho_zip, tipo) VALUES (%s, %s, %s, %s)",
-            ('MULTI', mes_por_extenso, zip_path, 'funcionarios')
+            (setor_nome, mes_por_extenso, zip_path, 'funcionarios')
         )
 
         conexao.commit()
@@ -104,13 +105,13 @@ def converte_setores_pdf():
             zip_path,
             mimetype='application/zip',
             as_attachment=True,
-            download_name=f'frequencias_multissetores_{mes_por_extenso}.zip'
+            download_name=f'frequencias_{setor_limpo}_{mes_por_extenso}.zip'
         )
 
     except Exception as exception:
         if 'conexao' in locals():
             conexao.close()
-        return jsonify({'erro': f'Erro ao processar setores: {str(exception)}'}), 500
+        return jsonify({'erro': f'Erro ao processar setor: {str(exception)}'}), 500
 
 def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario):
     from datetime import date
