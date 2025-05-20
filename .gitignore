@@ -1,2 +1,9 @@
 /setor/
 /.venv/
+documento_docx.py
+documento_estagiario.py
+importar_dados_estagiario.py
+importar_dados.py
+Procfile
+recuperar.py
+remover_ducplicados.py
