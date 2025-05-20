@@ -71,7 +71,7 @@ def converte_estagiario_pdf():
             for placeholder, valor in troca_de_dados.items():
                 muda_texto_documento(doc, placeholder, valor)
             nome_limpo = estagiario['nome'].strip()
-            setor_limpo = estagiario['setor'].strip()
+            setor_limpo = estagiario['setor'].replace('/', '-').strip()
             caminho_pasta = f"setor/{setor_limpo}/estagiario/{mes_por_extenso}/{nome_limpo}"
             os.makedirs(caminho_pasta, exist_ok=True)
 
