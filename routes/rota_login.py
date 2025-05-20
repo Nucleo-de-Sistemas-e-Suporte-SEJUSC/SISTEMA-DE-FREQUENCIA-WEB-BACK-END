@@ -19,27 +19,28 @@ conexao = mysql.connector.connect(
 
 # Classe de Usuário para Flask-Login
 class Usuario(UserMixin):
-    def __init__(self, id, matricula, nome, role, senha):
+    def __init__(self, id, matricula, nome, role, senha,cargo):
         self.id = id
         self.matricula = matricula
         self.nome = nome
         self.role = role
         self.senha = senha
+        self.cargo = cargo
    
     def get_id(self):
-        return self.id
+        return self.id, self.cargo
 
 
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
     data = request.json
+    print(usuario_data['cargo'])
     matricula = data.get('matricula')
     senha = data.get('senha')
 
-    # Conexão com o banco de dados
     cursor = conexao.cursor(dictionary=True)
-    query = "SELECT id, matricula, nome, senha, role FROM usuarios WHERE matricula = %s"
+    query = "SELECT id, matricula, nome, senha, role, cargo FROM usuarios WHERE matricula = %s"
     cursor.execute(query, (matricula,))
     usuario_data = cursor.fetchone()
 
@@ -48,26 +49,28 @@ def login():
 
     if usuario_data['senha'] != senha:
         return jsonify({"erro": "Senha inválida!"}), 401
+    print(usuario_data['cargo'])
 
-    # Criar instância do usuário e realizar login
-    usuario = Usuario(usuario_data['id'], usuario_data['matricula'], usuario_data['nome'], usuario_data['role'], usuario_data['senha'])
+    # Corrigido aqui
+    usuario = Usuario(
+        usuario_data['id'],
+        usuario_data['matricula'],
+        usuario_data['nome'],
+        usuario_data['role'],
+        usuario_data['senha'],
+        usuario_data['cargo']
+    )
     login_user(usuario)
+    print(usuario_data['cargo'])
 
-    # Configurar o cookie de autenticação
-    response = make_response(jsonify({"mensagem": "Login realizado com sucesso!", "nome": usuario.nome, "role": usuario.role}), 200)
+    response = make_response(jsonify({
+        "mensagem": "Login realizado com sucesso!",
+        
+        #"nome": usuario.nome,
+        #"role": usuario.role,
+        "cargo": usuario.cargo
+    }), 200)
+    print(usuario_data['cargo'])
+
     response.set_cookie('food', 'jwt-token', httponly=True, secure=False, samesite='None')
-
     return response
-
-
-@login_manager.user_loader
-def load_user(user_id):
-    cursor = conexao.cursor(dictionary=True)
-    query = "SELECT id, matricula, nome, senha, role FROM usuarios WHERE id = %s"
-    cursor.execute(query, (user_id,))
-    usuario_data = cursor.fetchone()
-
-    if usuario_data:
-        return Usuario(usuario_data['id'], usuario_data['matricula'], usuario_data['nome'], usuario_data['role'], usuario_data['senha'])
-
-    return None
