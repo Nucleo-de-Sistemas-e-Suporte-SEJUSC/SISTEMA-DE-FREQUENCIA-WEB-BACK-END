@@ -5,59 +5,42 @@ import os
 
 bp_send_setor_pdf = Blueprint('bp_send_setor_pdf', __name__)
 
-@bp_send_setor_pdf.route('/api/setores/pdf/download-zip/<setor>/<mes>', methods=['GET'])
-@bp_send_setor_pdf.route('/api/setores/estagiarios/pdf/download-zip/<setor>/<mes>', methods=['GET'])
-def download_zip(setor, mes):
-    try:
-        mes_formatado = mes.capitalize()
-        is_estagiarios = 'estagiarios' in request.path.lower()
+from flask import request, send_file, jsonify
+import os
 
-        conexao = connect_mysql()
-        cursor = conexao.cursor(dictionary=True)
+@bp_send_setor_pdf.route('/api/setores/download', methods=['GET'])
+def send_setores():
+    mes = request.args.get('mes')
+    setor = request.args.get('setor')
+    todos = request.args.get('todos')
 
-        if is_estagiarios:
-            cursor.execute(
-                "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND tipo='estagiarios'", 
-                (setor, mes_formatado)
+    base_path = 'setor'
+
+    if todos and mes:
+        # Caminho do ZIP geral
+        zip_path = os.path.join(base_path, f'frequencias_multissetores_{mes}.zip')
+        if os.path.exists(zip_path):
+            return send_file(
+                zip_path,
+                mimetype='application/zip',
+                as_attachment=True,
+                download_name=f'frequencias_multissetores_{mes}.zip'
             )
         else:
-            cursor.execute(
-                "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND (tipo IS NULL OR tipo != 'estagiarios')", 
-                (setor, mes_formatado)
+            return jsonify({'erro': 'Arquivo ZIP geral não encontrado'}), 404
+
+    elif setor and mes:
+        # Caminho do ZIP individual do setor
+        zip_path = os.path.join(base_path, setor, f'frequencias_{setor}_{mes}.zip')
+        if os.path.exists(zip_path):
+            return send_file(
+                zip_path,
+                mimetype='application/zip',
+                as_attachment=True,
+                download_name=f'frequencias_{setor}_{mes}.zip'
             )
+        else:
+            return jsonify({'erro': 'Arquivo ZIP do setor não encontrado'}), 404
 
-        result = cursor.fetchone()
-        
-        if not result:
-            return jsonify({'erro': 'Arquivo ZIP não encontrado no banco de dados'}), 404
-
-        # Usa o caminho EXATO do banco de dados
-        zip_path = result["caminho_zip"]
-        zip_path_verified = os.path.normpath(zip_path)
-        
-        print(f"Tentando acessar arquivo ZIP no caminho: {zip_path_verified}")
-        
-        if not os.path.exists(zip_path_verified):
-            return jsonify({
-                'erro': f'Arquivo físico não encontrado',
-                'caminho_esperado': zip_path_verified,
-                'dados_banco': result
-            }), 404
-
-        # Mantém o nome de download consistente
-        download_name = f'frequencias_{setor}_{mes_formatado}.zip'
-        if is_estagiarios:
-            download_name = f'frequencias_estagiarios_{setor}_{mes_formatado}.zip'
-
-        return send_file(
-            zip_path_verified,
-            mimetype='application/zip',
-            as_attachment=True,
-            download_name=download_name
-        )
-        
-    except Exception as e:
-        return jsonify({'erro': str(e)}), 500
-    finally:
-        if 'conexao' in locals():
-            conexao.close()
+    else:
+        return jsonify({'erro': 'Parâmetros inválidos'}), 400
