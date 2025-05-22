@@ -80,7 +80,7 @@ app.register_blueprint(bp_arquivar_estagiario)
 app.register_blueprint(bp_ativar_estagiario)
 @app.route("/")
 def home():
-    return "Bem-vindo ao sistema de frequência do RH!"
+    return 
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, debug=True)
