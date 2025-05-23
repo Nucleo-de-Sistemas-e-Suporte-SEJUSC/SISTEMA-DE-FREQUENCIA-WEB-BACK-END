@@ -14,7 +14,6 @@ from datetime import datetime, date
 import uuid
 
 bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
-import uuid
 
 @bp_converte_setor_pdf.route('/api/setores/pdf', methods=['POST'])
 def converte_setores_pdf():
@@ -106,8 +105,7 @@ def converte_setores_pdf():
 
         # Se mais de um setor, cria um ZIP final com todos os ZIPs dos setores e salva no banco
         if len(arquivos_zip_gerados) > 1:
-            uuid_str = str(uuid.uuid4())[:8]
-            zip_final_path = f"setor/frequencias_multissetores_{mes_body}_{uuid_str}.zip"
+            zip_final_path = f"setor/frequencias_multissetores_{mes_body}.zip"
             with zipfile.ZipFile(zip_final_path, 'w') as zipf:
                 for zip_file in arquivos_zip_gerados:
                     zipf.write(zip_file, os.path.basename(zip_file))
@@ -116,7 +114,7 @@ def converte_setores_pdf():
             cursor = conexao.cursor(dictionary=True)
             cursor.execute(
                 "INSERT INTO arquivos_zip (setor, mes, caminho_zip, tipo) VALUES (%s, %s, %s, %s)",
-                ('multissetores', mes_por_extenso, zip_final_path, 'funcionarios')
+                ('multissetores', mes_por_extenso, zip_final_path, 'multissetores')
             )
             conexao.commit()
             conexao.close()
@@ -130,6 +128,7 @@ def converte_setores_pdf():
         if 'conexao' in locals():
             conexao.close()
         return jsonify({'erro': f'Erro ao processar setores: {str(exception)}'}), 500
+
 
 
 def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario):
