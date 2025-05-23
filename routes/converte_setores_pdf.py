@@ -14,6 +14,7 @@ from datetime import datetime, date
 import uuid
 
 bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
+import uuid
 
 @bp_converte_setor_pdf.route('/api/setores/pdf', methods=['POST'])
 def converte_setores_pdf():
@@ -26,10 +27,10 @@ def converte_setores_pdf():
             return jsonify({'erro': 'Nenhum setor selecionado ou formato inválido'}), 400
 
         arquivos_zip_gerados = []
+        mes_por_extenso = data_atual(mes_body)['mes']
 
         for setor_nome in setores:
             data_ano_mes_atual = data_atual(mes_body)
-            mes_por_extenso = data_ano_mes_atual['mes']
             mes_numerico = data_ano_mes_atual['mes_numerico']
             ano = data_ano_mes_atual['ano']
             quantidade_dias_no_mes = pega_quantidade_dias_mes(ano, mes_numerico) 
@@ -52,8 +53,6 @@ def converte_setores_pdf():
             for funcionario in funcionarios:
                 template_path = 'FREQUÊNCIA_MENSAL.docx'
                 doc = Document(template_path)
-
-                # Preenche os dias do mês
                 cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario)
 
                 troca_de_dados = {
@@ -83,7 +82,6 @@ def converte_setores_pdf():
                 convert_to_pdf(docx_path, pdf_path)
                 arquivos_gerados.append(pdf_path)
 
-                # Salva no banco o caminho do PDF
                 cursor.execute(
                     "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)",
                     (funcionario['id'], pdf_path)
@@ -95,7 +93,7 @@ def converte_setores_pdf():
                 for pdf in arquivos_gerados:
                     zipf.write(pdf, os.path.basename(pdf))
 
-            # Salva o ZIP no banco
+            # Salva o ZIP do setor no banco
             cursor.execute(
                 "INSERT INTO arquivos_zip (setor, mes, caminho_zip, tipo) VALUES (%s, %s, %s, %s)",
                 (setor_nome, mes_por_extenso, zip_path, 'funcionarios')
@@ -106,16 +104,24 @@ def converte_setores_pdf():
 
             arquivos_zip_gerados.append(zip_path)
 
-        # Se mais de um setor, cria um ZIP final com todos os ZIPs dos setores
+        # Se mais de um setor, cria um ZIP final com todos os ZIPs dos setores e salva no banco
         if len(arquivos_zip_gerados) > 1:
             uuid_str = str(uuid.uuid4())[:8]
             zip_final_path = f"setor/frequencias_multissetores_{mes_body}_{uuid_str}.zip"
             with zipfile.ZipFile(zip_final_path, 'w') as zipf:
                 for zip_file in arquivos_zip_gerados:
                     zipf.write(zip_file, os.path.basename(zip_file))
+            # Salva o ZIP de multissetores no banco
+            conexao = connect_mysql()
+            cursor = conexao.cursor(dictionary=True)
+            cursor.execute(
+                "INSERT INTO arquivos_zip (setor, mes, caminho_zip, tipo) VALUES (%s, %s, %s, %s)",
+                ('multissetores', mes_por_extenso, zip_final_path, 'funcionarios')
+            )
+            conexao.commit()
+            conexao.close()
             return send_file(zip_final_path, mimetype='application/zip', as_attachment=True)
         elif arquivos_zip_gerados:
-            # Só um setor, retorna normalmente
             return send_file(arquivos_zip_gerados[0], mimetype='application/zip', as_attachment=True)
         else:
             return jsonify({'erro': 'Nenhum setor válido foi processado'}), 404

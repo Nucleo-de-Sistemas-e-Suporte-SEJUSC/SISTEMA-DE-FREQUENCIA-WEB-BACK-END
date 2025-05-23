@@ -41,7 +41,7 @@ def load_user(user_id):
         return Usuario(usuario_data["id"], usuario_data["matricula"], usuario_data["nome"], usuario_data["role"], usuario_data["cargo"])
     return None
 
-@auth_bp.route("/login", methods=["POST"])
+@auth_bp.route("/api/login", methods=["POST"])
 def login():
     data = request.json
     matricula = data.get("matricula")
