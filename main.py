@@ -28,6 +28,7 @@ from routes.arquivar_estagiario import bp_arquivar_estagiario
 from routes.ativar_estagiario   import bp_ativar_estagiario
 from routes.send_varios_setores import bp_send_varios_setores_pdf
 from routes.send_varios_setores_estagiario import bp_send_varios_setores_estagiarios_pdf
+from routes.buscar_arquivados_estagiarios import bp_buscar_estagiarios_arquivados
 from auth import auth_bp, login_manager  # ✅ Importação correta
 import os
 
@@ -82,6 +83,7 @@ app.register_blueprint(bp_arquivar_estagiario)
 app.register_blueprint(bp_ativar_estagiario)
 app.register_blueprint(bp_send_varios_setores_pdf)
 app.register_blueprint(bp_send_varios_setores_estagiarios_pdf)
+app.register_blueprint(bp_buscar_estagiarios_arquivados)
 @app.route("/")
 def home():
     return 
