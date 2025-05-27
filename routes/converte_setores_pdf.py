@@ -10,10 +10,61 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.enum.table import WD_ROW_HEIGHT_RULE
 import os
 import zipfile
-from datetime import datetime, date
+from datetime import datetime, date,time,timedelta
 import uuid
 
 bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
+
+
+
+
+def formatar_horario_para_hh_mm_v2(valor_horario):
+    """
+    Formata um valor de horário para o formato HH:MM, removendo os segundos.
+    """
+    if not valor_horario:  # Se for None, string vazia, etc.
+        return ''
+
+    # Caso 1: Se for um objeto datetime.time
+    if isinstance(valor_horario, time):
+        return valor_horario.strftime('%H:%M')
+
+    # Caso 2: Se for um objeto datetime.timedelta (comum de bancos de dados para colunas TIME)
+    if isinstance(valor_horario, timedelta):
+        total_seconds = int(valor_horario.total_seconds())
+        # Ignora dias, foca apenas na parte de tempo do dia
+        if total_seconds < 0: # Lida com timedeltas negativos, se aplicável
+            # Você pode querer um tratamento específico aqui, por ex., '' ou erro
+            # Para simplificar, vamos assumir horas e minutos a partir de 0 se for negativo
+            # ou tratar como 00:00. A lógica exata pode depender do seu caso de uso.
+            # Exemplo: tratar como 00:00 se negativo ou converter para positivo
+            # Para este exemplo, vamos apenas calcular com base no valor absoluto.
+            total_seconds = abs(total_seconds)
+
+        hours = (total_seconds // 3600) % 24 # Garante que as horas fiquem dentro de 0-23
+        minutes = (total_seconds % 3600) // 60
+        return f"{hours:02}:{minutes:02}"
+
+    # Caso 3: Se for uma string
+    if isinstance(valor_horario, str):
+        try:
+            # Tenta primeiro como HH:MM:SS
+            if valor_horario.count(':') == 2:
+                dt_obj = datetime.strptime(valor_horario, '%H:%M:%S')
+                return dt_obj.strftime('%H:%M')
+            # Depois como HH:MM
+            elif valor_horario.count(':') == 1:
+                dt_obj = datetime.strptime(valor_horario, '%H:%M')
+                return dt_obj.strftime('%H:%M') # Já está no formato, mas re-formata para garantir
+            else:
+                # Se não for um formato de tempo reconhecido, retorna a string original
+                return valor_horario
+        except ValueError:
+            # Se a conversão da string falhar
+            return valor_horario # Retorna a string original
+
+    # Fallback: Se não for nenhum dos tipos acima, tenta converter para string
+    return str(valor_horario)
 
 @bp_converte_setor_pdf.route('/api/setores/pdf', methods=['POST'])
 def converte_setores_pdf():
@@ -60,8 +111,8 @@ def converte_setores_pdf():
                     "CAMPO NOME": funcionario['nome'],
                     "CAMPO ANO": str(ano),
                     "CAMPO HORARIO": str(funcionario.get('horario', '')),
-                    "CAMPO ENTRADA": str(funcionario.get('horarioentrada', '')),
-                    "CAMPO SAÍDA": str(funcionario.get('horariosaida', '')),
+                    "CAMPO ENTRADA": formatar_horario_para_hh_mm_v2(funcionario.get('horarioentrada', '')),
+                    "CAMPO SAÍDA": formatar_horario_para_hh_mm_v2(funcionario.get('horariosaida', '')),
                     "CAMPO MATRÍCULA": str(funcionario.get('matricula', '')),
                     "CAMPO CARGO": funcionario.get('cargo', ''),
                 }
