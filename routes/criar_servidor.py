@@ -21,6 +21,8 @@ def criar_servidor():
             return jsonify({'erro': 'JSON não enviado ou malformado'}), 400
 
         validate = validator.validate(body)
+        print("Erros de validação:", validator.errors)
+
         if not validate:
             return jsonify({'erro': 'Dados inválidos', 'mensagem': validator.errors}), 400
 
@@ -51,7 +53,7 @@ def criar_servidor():
         tituloEleitor = body.get('titulo_eleitor')
         cpf = body.get('cpf')
         pis = body.get('pis')
-        dataAdmissao = body.get('data_admissao')
+        #dataAdmissao = body.get('data_admissao')
 
         # Verifica duplicidade
         try:
@@ -66,16 +68,17 @@ def criar_servidor():
         # Inserção
         try:
             criar_dados_servidor = """
-                INSERT INTO funcionarios (setor, nome, matricula, cargo,dataAdmissao, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
+                INSERT INTO funcionarios (setor, nome, matricula, cargo, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
             """
             cursor.execute(criar_dados_servidor, (
-                setor, nome, matricula, cargo, horario,dataAdmissao, horarioentrada, horariosaida,
+                setor, nome, matricula, cargo, horario, horarioentrada, horariosaida,
                 feriasinicio, feriasfinal, dataNascimento, sexo, estadoCivil, naturalidade,
                 nacionalidade, identidade, tituloEleitor, cpf, pis
             ))
             conexao.commit()
         except Error as db_err:
+            print(db_err)
             return jsonify({'erro': 'Erro ao inserir servidor', 'mensagem': str(db_err)}), 500
 
         dados_retornados = {
@@ -84,7 +87,7 @@ def criar_servidor():
             "nome": nome,
             "matricula": matricula,
             "cargo": cargo,
-            "data_admissao": dataAdmissao,
+            #"data_admissao": dataAdmissao,
             #"funcao": funcao,
             "horario": horario,
             "entrada": horarioentrada,
