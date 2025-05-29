@@ -7,15 +7,13 @@ from decorador import roles_required
 bp_buscar_estagiarios = Blueprint('bp_buscar_estagiarios', __name__)
 
 @bp_buscar_estagiarios.route("/api/estagiarios", methods=["GET"])
-# @login_required
-# @roles_required('admin','editor')
 def buscar_estagiarios():
     try:
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
-        # Consulta padrão para buscar estagiários
-        consulta = "SELECT * FROM estagiarios  WHERE 1=1 ORDER BY nome"
+        # Consulta padrão para buscar apenas estagiários ativos
+        consulta = "SELECT * FROM estagiarios WHERE status = 'ativo'"
         parametros = []
 
         # Filtros opcionais
@@ -29,12 +27,11 @@ def buscar_estagiarios():
             consulta += " AND setor = %s"
             parametros.append(setor)
 
+        consulta += " ORDER BY nome"
+
         # Executa a consulta
         cursor.execute(consulta, tuple(parametros))
         estagiarios = cursor.fetchall()
-
-        if len(estagiarios) == 0:
-            return jsonify({"estagiarios": []}), 200
 
         return jsonify({"estagiarios": estagiarios}), 200
 
@@ -46,3 +43,4 @@ def buscar_estagiarios():
             cursor.close()
         if 'conexao' in locals() and conexao.is_connected():
             conexao.close()
+

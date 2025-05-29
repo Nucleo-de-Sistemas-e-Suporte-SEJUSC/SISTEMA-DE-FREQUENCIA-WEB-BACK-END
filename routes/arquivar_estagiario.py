@@ -7,6 +7,8 @@ from decorador import roles_required
 bp_arquivar_estagiario = Blueprint('bp_arquivar_estagiario', __name__)
 
 @bp_arquivar_estagiario.route('/api/estagiarios/<int:id>/arquivar', methods=['PATCH'])
+@login_required
+@roles_required('admin')
 def arquivar_estagiario(id):
     print("Cheguei aqui")
     try:
