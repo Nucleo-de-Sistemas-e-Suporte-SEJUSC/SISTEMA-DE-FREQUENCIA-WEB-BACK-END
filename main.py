@@ -35,10 +35,11 @@ import os
 app = Flask(__name__)
 # Configura CORS uma única vez com os dois domínios permitidos
 CORS(app, supports_credentials=True, origins=[
-    "http://localhost:5173",
-    "http://localhost:8080",
+    #"http://localhost:5173",
+    #"http://localhost:8080",
     #"http://12.90.4.88:8080",
-    "http://12.90.4.98:8080",
+    #"http://12.90.4.98:8080",
+    "*"
 ])
 
 # Adiciona os cabeçalhos extras corretamente (sem sobrescrever)
