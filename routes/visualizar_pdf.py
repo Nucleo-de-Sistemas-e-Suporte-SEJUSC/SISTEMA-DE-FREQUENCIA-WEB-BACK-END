@@ -10,7 +10,7 @@ bp_visualizar_pdf = Blueprint('bp_visualizar_pdf', __name__)
 def normalizar_nome(nome):
     """Converte para formato do sistema de arquivos (remove acentos, espaços vira _)"""
     nome_sem_acentos = normalize('NFKD', nome).encode('ASCII', 'ignore').decode('ASCII')
-    return nome_sem_acentos.replace(' ', '_').upper()
+    return nome_sem_acentos.replace('', '_').upper()
 
 @bp_visualizar_pdf.route('/api/pdf/<setor>/<mes>/<nome_servidor>/<nome_arquivo>')
 def visualizar_pdf(setor, mes, nome_servidor, nome_arquivo):

@@ -20,7 +20,6 @@ def criar_estagiario():
         if validate == False:
                 return jsonify({'erro': 'Dados inválidos', 'mensagem': validator.errors}), 400
     
-    
         setor = body.get('setor')
         nome = body.get('nome')
         cargo = body.get('cargo')

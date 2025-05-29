@@ -6,7 +6,7 @@ import os
 bp_send_setor_pdf = Blueprint('bp_send_setor_pdf', __name__)
 
 @bp_send_setor_pdf.route('/api/setores/pdf/download-zip/<setor>/<mes>', methods=['GET'])
-@bp_send_setor_pdf.route('/api/setores/estagiarios/pdf/download-zip/<setor>/<mes>', methods=['GET'])
+@bp_send_setor_pdf.route('/api/setores/estagiarios/<setor>/<mes>', methods=['GET'])
 def download_zip(setor, mes):
     try:
         mes_formatado = mes.capitalize()

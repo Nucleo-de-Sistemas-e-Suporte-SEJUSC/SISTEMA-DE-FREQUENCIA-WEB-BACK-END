@@ -1,1 +1,5 @@
 /setor/
+/.venv/
+/arquivos-temporarios/
+/meuambiente/
+**/__pycache__/
