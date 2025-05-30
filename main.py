@@ -34,7 +34,7 @@ import os
 
 app = Flask(__name__)
 # Configura CORS uma única vez com os dois domínios permitidos
-CORS(app, supports_credentials=True, origins=r"http://12\.90\.4\.\d+:8081")
+CORS(app, supports_credentials=True, origin_regex=r"http://12\.90\.4\.\d+:8081")
 
 # Adiciona os cabeçalhos extras corretamente (sem sobrescrever)
 @app.after_request
