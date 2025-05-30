@@ -24,7 +24,7 @@ def atualizar_servidor(id):
             return jsonify({'erro': 'Servidor não encontrado'}), 404
 
         # Lista de campos que podem ser atualizados
-        campos_permitidos = ['setor', 'nome', 'matricula', 'cargo', 'funcao', 'horario', 'horarioentrada', 'horariosaida', 'feriasinicio', 'feriasfinal']
+        campos_permitidos = ['setor', 'nome', 'matricula', 'cargo', 'funcao', 'horario', 'horarioentrada', 'horariosaida', 'feriasinicio', 'feriasfinal','dataNascimento', 'sexo', 'estadoCivil', 'naturalidade', 'nacionalidade', 'identidade', 'tituloEleitor', 'cpf', 'pis', 'rg', 'dataAdmissao']
         
         # Dicionário para armazenar os campos e valores que serão atualizados
         campos_para_atualizar = {}

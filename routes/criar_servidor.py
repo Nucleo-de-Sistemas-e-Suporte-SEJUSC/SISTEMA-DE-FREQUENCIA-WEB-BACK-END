@@ -53,6 +53,7 @@ def criar_servidor():
         tituloEleitor = body.get('titulo_eleitor')
         cpf = body.get('cpf')
         pis = body.get('pis')
+        rg = body.get('rg')
         #dataAdmissao = body.get('data_admissao')
 
         # Verifica duplicidade
@@ -68,13 +69,13 @@ def criar_servidor():
         # Inserção
         try:
             criar_dados_servidor = """
-                INSERT INTO funcionarios (setor, nome, matricula, cargo, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
+                INSERT INTO funcionarios (setor, nome, matricula, cargo, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis,rg)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s,%s)
             """
             cursor.execute(criar_dados_servidor, (
                 setor, nome, matricula, cargo, horario, horarioentrada, horariosaida,
                 feriasinicio, feriasfinal, dataNascimento, sexo, estadoCivil, naturalidade,
-                nacionalidade, identidade, tituloEleitor, cpf, pis
+                nacionalidade, identidade, tituloEleitor, cpf, pis, rg
             ))
             conexao.commit()
         except Error as db_err:
@@ -102,7 +103,8 @@ def criar_servidor():
             "identidade": identidade,
             "titulo_eleitor": tituloEleitor,
             "cpf": cpf,
-            "pis": pis
+            "pis": pis,
+            "rg": rg
         }
         return jsonify({'servidor': dados_retornados}), 201
 
