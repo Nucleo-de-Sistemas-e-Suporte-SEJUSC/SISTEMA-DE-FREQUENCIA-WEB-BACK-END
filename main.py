@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from mysql.connector import Error
 from routes import bp as routes_bp
 from routes.criar_servidor import bp_criar_servidor
@@ -34,13 +34,7 @@ import os
 
 app = Flask(__name__)
 # Configura CORS uma única vez com os dois domínios permitidos
-CORS(app, supports_credentials=True, origins=[
-    #"http://localhost:5173",
-    #"http://localhost:8080",
-    #"http://12.90.4.88:8080",
-    #"http://12.90.4.98:8080",
-    "*"
-])
+CORS(app, supports_credentials=True, origins=r"http://12\.90\.4\.\d+:8081")
 
 # Adiciona os cabeçalhos extras corretamente (sem sobrescrever)
 @app.after_request
@@ -87,7 +81,7 @@ app.register_blueprint(bp_send_varios_setores_estagiarios_pdf)
 app.register_blueprint(bp_buscar_estagiarios_arquivados)
 @app.route("/")
 def home():
-    return 
+    return  "bem vindo ao sistema de rh "
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    app.run(host="0.0.0.0", port=8001, debug=True)
