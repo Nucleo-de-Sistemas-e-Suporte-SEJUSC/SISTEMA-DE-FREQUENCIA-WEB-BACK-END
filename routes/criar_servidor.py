@@ -38,12 +38,9 @@ def criar_servidor():
         nome = body.get('nome')
         matricula = body.get('matricula')
         cargo = body.get('cargo')
-        #funcao = body.get('funcao')
         horario = body.get('horario')
         horarioentrada = body.get('entrada')
         horariosaida = body.get('saida')
-        #feriasinicio = body.get('feriasinicio')
-        #feriasfinal = body.get('feriasfinal')
         dataNascimento = body.get('data_nascimento')
         sexo = body.get('sexo')
         estadoCivil = body.get('estado_civil')
@@ -53,7 +50,7 @@ def criar_servidor():
         tituloEleitor = body.get('titulo_eleitor')
         cpf = body.get('cpf')
         pis = body.get('pis')
-        #rg = body.get('rg')
+
         dataAdmissao = body.get('data_admissao')
 
         # Verifica duplicidade
