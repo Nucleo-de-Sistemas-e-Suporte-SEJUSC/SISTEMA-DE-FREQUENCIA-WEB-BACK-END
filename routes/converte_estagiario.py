@@ -19,10 +19,6 @@ import holidays
 
 bp_converte_estagiario_pdf = Blueprint('bp_converte_estagiario_pdf', __name__)
 
-
-
-
-
 def pegar_feriados_mes(ano, mes, estado='AM', cidade=None):
     br_feriados = holidays.Brazil(state=estado)
 
