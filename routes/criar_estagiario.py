@@ -26,8 +26,8 @@ def criar_estagiario():
         horario = body.get('horario')
         horarioentrada = body.get('entrada')
         horariosaida = body.get('saida')
-        feriasinicio = body.get('feriasinicio')
-        feriasfinal = body.get('feriasfinal')
+        #feriasinicio = body.get('feriasinicio')
+        #feriasfinal = body.get('feriasfinal')
     
         verifica_se_estagiario_existe = "SELECT * FROM estagiarios WHERE nome = %s"
         cursor.execute(verifica_se_estagiario_existe, (nome,))
@@ -38,10 +38,10 @@ def criar_estagiario():
                 return jsonify({'erro': 'Estagiário já cadastrado'}), 409
     
         criar_dados_estagiario = """
-                INSERT INTO estagiarios (setor, nome,cargo,horario,horario_entrada,horario_saida, feriasinicio, feriasfinal)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO estagiarios (setor, nome,cargo,horario,horario_entrada,horario_saida)
+                VALUES (%s, %s, %s, %s, %s, %s)
             """
-        cursor.execute(criar_dados_estagiario, (setor, nome, cargo,horario,horarioentrada, horariosaida, feriasinicio, feriasfinal))
+        cursor.execute(criar_dados_estagiario, (setor, nome, cargo,horario,horarioentrada, horariosaida))
         conexao.commit()
         conexao.close()
             
@@ -53,8 +53,8 @@ def criar_estagiario():
                 "horario": horario,
                 "horarioentrada": horarioentrada,
                 "horariosaida": horariosaida,
-                "feriasinicio": feriasinicio,
-                "feriasfinal": feriasfinal
+                #"feriasinicio": feriasinicio,
+                #"feriasfinal": feriasfinal
         }
         
         return jsonify(dados_retornados), 201
