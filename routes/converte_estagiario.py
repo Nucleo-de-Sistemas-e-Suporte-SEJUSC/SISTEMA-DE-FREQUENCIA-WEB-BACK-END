@@ -109,7 +109,7 @@ def converte_estagiario_pdf():
 
             troca_de_dados = {
                 "CAMPO SETOR": estagiario['setor'],
-                "CAMPO MÊS": mes_por_extenso,
+                "CAMPO MES": mes_por_extenso,
                 "CAMPO NOME": estagiario['nome'],
                 #"CAMPO PERIODO": f"21/{mes_numerico}/{ano} a 20/{(mes_numerico % 12) + 1}/{ano if mes_numerico < 12 else ano + 1}",
                 "CAMPO ANO": str(ano),
