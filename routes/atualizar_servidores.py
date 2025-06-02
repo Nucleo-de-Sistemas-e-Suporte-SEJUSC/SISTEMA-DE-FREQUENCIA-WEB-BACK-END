@@ -8,8 +8,8 @@ from decorador import roles_required   # Importa o decorador personalizado
 bp_atualizar_servidor = Blueprint('bp_atualizar_servidor', __name__)
 
 @bp_atualizar_servidor.route('/api/servidores/<int:id>', methods=['PUT'])
-@login_required
-@roles_required('admin','editor')
+#@login_required
+#@roles_required('admin','editor')
 def atualizar_servidor(id):
     try:
         conexao = connect_mysql()
