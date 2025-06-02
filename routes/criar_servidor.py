@@ -42,8 +42,8 @@ def criar_servidor():
         horario = body.get('horario')
         horarioentrada = body.get('entrada')
         horariosaida = body.get('saida')
-        feriasinicio = body.get('feriasinicio')
-        feriasfinal = body.get('feriasfinal')
+        #feriasinicio = body.get('feriasinicio')
+        #feriasfinal = body.get('feriasfinal')
         dataNascimento = body.get('data_nascimento')
         sexo = body.get('sexo')
         estadoCivil = body.get('estado_civil')
@@ -54,7 +54,7 @@ def criar_servidor():
         cpf = body.get('cpf')
         pis = body.get('pis')
         #rg = body.get('rg')
-        #dataAdmissao = body.get('data_admissao')
+        dataAdmissao = body.get('data_admissao')
 
         # Verifica duplicidade
         try:
@@ -69,13 +69,13 @@ def criar_servidor():
         # Inserção
         try:
             criar_dados_servidor = """
-                INSERT INTO funcionarios (setor, nome, matricula, cargo, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis)
+                INSERT INTO funcionarios (setor, nome, matricula, cargo, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis,data_Admissao)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
             """
             cursor.execute(criar_dados_servidor, (
                 setor, nome, matricula, cargo, horario, horarioentrada, horariosaida,
-                feriasinicio, feriasfinal, dataNascimento, sexo, estadoCivil, naturalidade,
-                nacionalidade, identidade, tituloEleitor, cpf, pis
+                dataNascimento, sexo, estadoCivil, naturalidade,
+                nacionalidade, identidade, tituloEleitor, cpf, pis,dataAdmissao
             ))
             conexao.commit()
         except Error as db_err:
@@ -88,13 +88,11 @@ def criar_servidor():
             "nome": nome,
             "matricula": matricula,
             "cargo": cargo,
-            #"data_admissao": dataAdmissao,
+            "data_admissao": dataAdmissao,
             #"funcao": funcao,
             "horario": horario,
             "entrada": horarioentrada,
             "saida": horariosaida,
-            "feriasinicio": feriasinicio,
-            "feriastermino": feriasfinal,
             "data_nascimento": dataNascimento,
             "sexo": sexo,
             'estado_civil': estadoCivil,
