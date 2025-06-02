@@ -13,8 +13,38 @@ import os
 import zipfile 
 import datetime
 from datetime import time, timedelta, datetime
+from datetime import date
+from dateutil.easter import easter
+import holidays
 
 bp_converte_estagiario_pdf = Blueprint('bp_converte_estagiario_pdf', __name__)
+
+
+
+
+
+def pegar_feriados_mes(ano, mes, estado='AM', cidade=None):
+    br_feriados = holidays.Brazil(state=estado)
+
+    # Adiciona Corpus Christi manualmente (60 dias após a Páscoa)
+    pascoa = easter(ano)
+    corpus_christi = pascoa + timedelta(days=60)
+    br_feriados[corpus_christi] = "Corpus Christi"
+
+    # (Opcional) Feriados municipais
+    feriados_municipais = {
+        'Manaus': [
+            date(ano, 10, 24),  # Aniversário de Manaus
+        ]
+    }
+
+    if cidade in feriados_municipais:
+        for feriado in feriados_municipais[cidade]:
+            br_feriados[feriado] = "Feriado Municipal"
+
+    # Retorna apenas os do mês desejado
+    feriados_mes = [d for d in br_feriados if d.month == mes]
+    return feriados_mes
 
 
 def formatar_horario_para_hh_mm_v2(valor_horario):
@@ -100,12 +130,13 @@ def converte_estagiario_pdf():
             return jsonify({'erro': 'Nenhum estagiário encontrado'}), 404
 
         arquivos_gerados = []
+        feriados_do_mes = pegar_feriados_mes(ano, mes_numerico)
 
         for estagiario in estagiarios:
             template_path = 'FREQUÊNCIA ESTAGIÁRIOS - MODELO.docx'
             doc = Document(template_path)
 
-            cria_dias_da_celula(doc, ano, mes_numerico, estagiario)
+            cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados_do_mes)
 
             troca_de_dados = {
                 "CAMPO SETOR": estagiario['setor'],
@@ -135,6 +166,7 @@ def converte_estagiario_pdf():
             convert_to_pdf(docx_path, pdf_path)
 
             arquivos_gerados.append(pdf_path)
+            
 
 
         # Cria um arquivo ZIP com todos os PDFs
@@ -165,7 +197,7 @@ def converte_estagiario_pdf():
         return jsonify({'erro': f'Erro: {str(exception)}'}), 500
     
     
-def cria_dias_da_celula(doc, ano, mes_numerico, estagiario):
+def cria_dias_da_celula(doc, ano, mes_numerico, estagiario,feriados):
     from datetime import datetime, timedelta, date
 
     def calcula_periodo_21_a_20(ano, mes):
@@ -184,6 +216,7 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario):
                 "ano": data_atual.year
             })
             data_atual += timedelta(days=1)
+        print(f"Dias do período de 21 a 20: {dias_periodo}")
         return dias_periodo
 
     linha_inicial = 7  # Ajuste conforme necessário
@@ -255,6 +288,15 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario):
                 for j in [2, 5, 8, 12]:  # Ajustei os índices das células
                     cell = row.cells[j]
                     cell.text = texto
+                    for paragraph in cell.paragraphs:
+                        for run in paragraph.runs:
+                            run.font.bold = True
+                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                        
+            if data_atual in feriados and dia_semana not in [5, 6]:
+                for j in [2, 5, 9, 13]:
+                    cell = row.cells[j]
+                    cell.text = "FERIADO"
                     for paragraph in cell.paragraphs:
                         for run in paragraph.runs:
                             run.font.bold = True
