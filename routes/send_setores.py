@@ -34,12 +34,18 @@ def download_zip(setor, mes):
         params = ()
 
         if is_estagiarios:
-            query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND tipo='estagiarios'"
-            params = (setor_para_consulta_db, mes_formatado) # Use a variável transformada!
+            # Adicionado LIMIT 1
+            query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND tipo='estagiarios' LIMIT 1"
+            params = (setor_para_consulta_db, mes_formatado)
         else:
-            query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND (tipo IS NULL OR tipo != 'estagiarios')"
-            params = (setor_para_consulta_db, mes_formatado) # Use a variável transformada!
+            # Adicionado LIMIT 1
+            query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND (tipo IS NULL OR tipo != 'estagiarios') LIMIT 1"
+            params = (setor_para_consulta_db, mes_formatado)
 
+        print(f"Executando SQL: {query} com params: {params}")
+        cursor.execute(query, params)
+        result = cursor.fetchone() 
+        
         print(f"Executando SQL: {query} com params: {params}") # Log da consulta
         cursor.execute(query, params)
         result = cursor.fetchone()
