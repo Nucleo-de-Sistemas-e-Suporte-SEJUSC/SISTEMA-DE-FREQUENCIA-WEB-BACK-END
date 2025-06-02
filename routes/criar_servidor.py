@@ -69,13 +69,13 @@ def criar_servidor():
         # Inserção
         try:
             criar_dados_servidor = """
-                INSERT INTO funcionarios (setor, nome, matricula, cargo, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis,data_Admissao)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
+                INSERT INTO funcionarios (setor, nome, matricula, cargo, horario, horarioentrada, horariosaida, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis,data_Admissao)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(criar_dados_servidor, (
                 setor, nome, matricula, cargo, horario, horarioentrada, horariosaida,
                 dataNascimento, sexo, estadoCivil, naturalidade,
-                nacionalidade, identidade, tituloEleitor, cpf, pis,dataAdmissao
+                nacionalidade, identidade, tituloEleitor, cpf, pis, dataAdmissao
             ))
             conexao.commit()
         except Error as db_err:
