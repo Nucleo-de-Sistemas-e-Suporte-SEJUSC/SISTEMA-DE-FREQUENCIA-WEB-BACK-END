@@ -19,29 +19,71 @@ import holidays
 
 bp_converte_estagiario_pdf = Blueprint('bp_converte_estagiario_pdf', __name__)
 
-def pegar_feriados_mes(ano, mes, estado='AM', cidade=None):
+def pegar_feriados_mes(ano, mes, estado='AM'):
+    print(f"DEBUG: Iniciando pegar_feriados_mes para ano={ano}, mes={mes}, estado='{estado}'") # DEBUG
+
     br_feriados = holidays.Brazil(state=estado)
     pascoa = easter(ano)
     corpus_christi = pascoa + timedelta(days=60)
     br_feriados[corpus_christi] = "Corpus Christi"
 
-    feriados_municipais = {
-        'Manaus': [
-            date(ano, 10, 24),
-        ]
-    }
-    if cidade in feriados_municipais:
-        for feriado in feriados_municipais[cidade]:
-            br_feriados[feriado] = "Feriado Municipal"
+    conexao = connect_mysql()
+    cursor = conexao.cursor(dictionary=True)
+    feriados_municipais_db = [] # Inicializa para o caso de falha na query
+    try:
+        query_sql = "SELECT data FROM feriados_municipais WHERE estado = %s AND YEAR(data) = %s"
+        params = (estado, ano)
+        print(f"DEBUG: Executando SQL: {query_sql} com params {params}") # DEBUG
+        cursor.execute(query_sql, params)
+        feriados_municipais_db = cursor.fetchall()
+        print(f"DEBUG: Feriados municipais crus do DB: {feriados_municipais_db}") # DEBUG
+        if feriados_municipais_db:
+            # Itera sobre uma cópia ou acessa diretamente, mas vamos ver o tipo do primeiro, se existir
+            print(f"DEBUG: Tipo do valor 'data' do primeiro feriado do DB (se existir): {type(feriados_municipais_db[0]['data'])}") # DEBUG
+    except Exception as e:
+        print(f"DEBUG: Erro ao buscar feriados municipais do DB: {e}") #DEBUG
+    finally:
+        if conexao.is_connected(): # Verifica se a conexão está aberta antes de fechar
+            cursor.close() # Fecha o cursor primeiro
+            conexao.close()
+            print("DEBUG: Conexão com MySQL fechada.") # DEBUG
+        else:
+            print("DEBUG: Conexão com MySQL já estava fechada ou não foi estabelecida.") #DEBUG
 
-    # Pega feriados do mês e do mês seguinte (até dia 20)
-    feriados_periodo = []
-    for d in br_feriados:
-        if (d.year == ano and d.month == mes) or \
-           (d.year == ano and d.month == (mes % 12) + 1 and d.day <= 20) or \
-           (mes == 12 and d.year == ano + 1 and d.month == 1 and d.day <= 20):
-            feriados_periodo.append(d)
-    return feriados_periodo
+
+    for feriado_row in feriados_municipais_db:
+        data_db = feriado_row['data']
+        print(f"DEBUG: Processando feriado_row['data']: {data_db} (Tipo: {type(data_db)})") # DEBUG
+        
+        data_feriado_obj = None
+        if data_db is None:
+            print(f"DEBUG: data_db é None. Pulando.") #DEBUG
+            continue
+
+        if hasattr(data_db, 'date'):  # Verifica se é um objeto datetime.datetime
+            data_feriado_obj = data_db.date()
+            print(f"DEBUG: Convertido de datetime.datetime para date: {data_feriado_obj}") # DEBUG
+        elif isinstance(data_db, date):  # Verifica se já é um objeto datetime.date
+            data_feriado_obj = data_db
+            print(f"DEBUG: Já é um objeto date: {data_feriado_obj}") # DEBUG
+        else:
+            # Caso seja uma string ou outro tipo, tenta converter
+            try:
+                data_feriado_obj = date.fromisoformat(str(data_db))
+                print(f"DEBUG: Convertido de string/outro para date: {data_feriado_obj}") # DEBUG
+            except ValueError:
+                print(f"DEBUG: Alerta: Formato de data inválido '{data_db}' não pôde ser convertido.") # DEBUG
+                continue # Pula para o próximo feriado
+
+        if data_feriado_obj:
+            br_feriados[data_feriado_obj] = "Feriado Municipal"
+            print(f"DEBUG: Adicionado ao br_feriados: {data_feriado_obj}") # DEBUG
+
+    print(f"DEBUG: Conteúdo de br_feriados ANTES de filtrar por mês: {br_feriados.items()}") # DEBUG
+    feriados_mes = [d for d in br_feriados if d.month == mes]
+    print(f"DEBUG: Feriados filtrados para o mês {mes}: {feriados_mes}") # DEBUG
+    return feriados_mes
+
 
 
 def formatar_horario_para_hh_mm_v2(valor_horario):
@@ -127,13 +169,30 @@ def converte_estagiario_pdf():
             return jsonify({'erro': 'Nenhum estagiário encontrado'}), 404
 
         arquivos_gerados = []
-        feriados_do_mes = pegar_feriados_mes(ano, mes_numerico)
+        
+        estado_para_feriados = 'AM' # Ou defina dinamicamente se necessário
+
+        feriados_mes_corrente_periodo = pegar_feriados_mes(ano, mes_numerico, estado=estado_para_feriados) # Feriados do primeiro mês do período (ex: Junho)
+
+        ano_proximo_mes_periodo = ano
+        mes_numerico_proximo_periodo = mes_numerico + 1
+        if mes_numerico_proximo_periodo > 12:
+            mes_numerico_proximo_periodo = 1
+            ano_proximo_mes_periodo += 1
+        
+        feriados_proximo_mes_periodo = pegar_feriados_mes(ano_proximo_mes_periodo, mes_numerico_proximo_periodo, estado=estado_para_feriados) # Feriados do segundo mês do período (ex: Julho)
+        
+        # Combina as duas listas de feriados. Usar set para evitar duplicatas caso haja alguma sobreposição (improvável com meses distintos)
+        todos_feriados_do_periodo = list(set(feriados_mes_corrente_periodo + feriados_proximo_mes_periodo))
+        print(f"DEBUG: Todos feriados para o período (mes {mes_numerico} e {mes_numerico_proximo_periodo}): {todos_feriados_do_periodo}")
+        # -- Fim da Modificação --
+        #feriados_do_mes = pegar_feriados_mes(ano, mes_numerico)
 
         for estagiario in estagiarios:
             template_path = 'FREQUÊNCIA ESTAGIÁRIOS - MODELO.docx'
             doc = Document(template_path)
 
-            cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados_do_mes)
+            cria_dias_da_celula(doc, ano, mes_numerico, estagiario, todos_feriados_do_periodo)
 
             troca_de_dados = {
                 "CAMPO SETOR": estagiario['setor'],

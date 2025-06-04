@@ -12,7 +12,7 @@ def cadastrar_feriado_municipal():
     descricao = body.get('descricao', 'Feriado Municipal')
 
     if not estado or not data_feriado:
-        return jsonify({'erro': 'Cidade e data são obrigatórios'}), 400
+        return jsonify({'erro': 'Estado e data são obrigatórios'}), 400
 
     conexao = connect_mysql()
     cursor = conexao.cursor()

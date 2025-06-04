@@ -1,75 +1,100 @@
 from utils.convert_to_pdf import convert_to_pdf
 from utils.muda_texto_documento import muda_texto_documento
-from utils.formata_datas import data_atual, pega_final_de_semana # pega_quantidade_dias_mes removido pois não é usado aqui
+from utils.formata_datas import data_atual, pega_final_de_semana
 from flask import Blueprint, request, jsonify, send_file
 from conection_mysql import connect_mysql
-# from mysql.connector import Error # Não usado diretamente
 from docx import Document
 from docx.shared import Pt, Cm
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.enum.table import WD_ROW_HEIGHT_RULE
 import os
 import zipfile
-from datetime import datetime, timedelta, date, time# Adicionado para cria_dias_da_celula
+from datetime import datetime, timedelta, date, time
+# Imports necessários para pegar_feriados_mes
+from dateutil.easter import easter
+import holidays
 
 bp_converte_setor_estagiario_pdf = Blueprint('bp_converte_setor_estagiario_pdf', __name__)
 
+# COPIADO DE: Função pegar_feriados_mes (com seus prints de debug)
+def pegar_feriados_mes(ano, mes, estado='AM'):
+    print(f"DEBUG setor_estagiarios: Iniciando pegar_feriados_mes para ano={ano}, mes={mes}, estado='{estado}'")
+
+    br_feriados = holidays.Brazil(state=estado)
+    pascoa = easter(ano)
+    corpus_christi = pascoa + timedelta(days=60)
+    br_feriados[corpus_christi] = "Corpus Christi"
+
+    conexao_feriado = None
+    try:
+        conexao_feriado = connect_mysql()
+        cursor_feriado = conexao_feriado.cursor(dictionary=True)
+        feriados_municipais_db = []
+        query_sql = "SELECT data FROM feriados_municipais WHERE estado = %s AND YEAR(data) = %s"
+        params = (estado, ano)
+        print(f"DEBUG setor_estagiarios: Executando SQL: {query_sql} com params {params}")
+        cursor_feriado.execute(query_sql, params)
+        feriados_municipais_db = cursor_feriado.fetchall()
+        print(f"DEBUG setor_estagiarios: Feriados municipais crus do DB: {feriados_municipais_db}")
+        if feriados_municipais_db and feriados_municipais_db[0].get('data') is not None:
+            print(f"DEBUG setor_estagiarios: Tipo do valor 'data' do primeiro feriado do DB (se existir): {type(feriados_municipais_db[0]['data'])}")
+        cursor_feriado.close() # Fechar cursor aqui
+    except Exception as e:
+        print(f"DEBUG setor_estagiarios: Erro ao buscar feriados municipais do DB: {e}")
+    finally:
+        if conexao_feriado and conexao_feriado.is_connected():
+            conexao_feriado.close()
+            print("DEBUG setor_estagiarios: Conexão de feriado com MySQL fechada.")
+        else:
+            print("DEBUG setor_estagiarios: Conexão de feriado com MySQL já estava fechada ou não foi estabelecida.")
+
+    for feriado_row in feriados_municipais_db:
+        data_db = feriado_row['data']
+        data_feriado_obj = None
+        if data_db is None:
+            continue
+        if hasattr(data_db, 'date'):
+            data_feriado_obj = data_db.date()
+        elif isinstance(data_db, date):
+            data_feriado_obj = data_db
+        else:
+            try:
+                data_feriado_obj = date.fromisoformat(str(data_db))
+            except ValueError:
+                print(f"DEBUG setor_estagiarios: Alerta: Formato de data inválido '{data_db}' não pôde ser convertido.")
+                continue
+        if data_feriado_obj:
+            br_feriados[data_feriado_obj] = "Feriado Municipal"
+    # print(f"DEBUG setor_estagiarios: Conteúdo de br_feriados ANTES de filtrar por mês: {br_feriados.items()}")
+    feriados_mes = [d for d in br_feriados if d.month == mes]
+    print(f"DEBUG setor_estagiarios: Feriados filtrados para o mês {mes}: {feriados_mes}")
+    return feriados_mes
+# FIM DE: Função pegar_feriados_mes
 
 
 def formatar_horario_para_hh_mm_v2(valor_horario):
-    """
-    Formata um valor de horário para o formato HH:MM, removendo os segundos.
-    """
-    if not valor_horario:  # Se for None, string vazia, etc.
-        return ''
-
-    # Caso 1: Se for um objeto datetime.time
-    if isinstance(valor_horario, time):
-        return valor_horario.strftime('%H:%M')
-
-    # Caso 2: Se for um objeto datetime.timedelta (comum de bancos de dados para colunas TIME)
+    if not valor_horario: return ''
+    if isinstance(valor_horario, time): return valor_horario.strftime('%H:%M')
     if isinstance(valor_horario, timedelta):
-        total_seconds = int(valor_horario.total_seconds())
-        # Ignora dias, foca apenas na parte de tempo do dia
-        if total_seconds < 0: # Lida com timedeltas negativos, se aplicável
-            # Você pode querer um tratamento específico aqui, por ex., '' ou erro
-            # Para simplificar, vamos assumir horas e minutos a partir de 0 se for negativo
-            # ou tratar como 00:00. A lógica exata pode depender do seu caso de uso.
-            # Exemplo: tratar como 00:00 se negativo ou converter para positivo
-            # Para este exemplo, vamos apenas calcular com base no valor absoluto.
-            total_seconds = abs(total_seconds)
-
-        hours = (total_seconds // 3600) % 24 # Garante que as horas fiquem dentro de 0-23
+        total_seconds = abs(int(valor_horario.total_seconds()))
+        hours = (total_seconds // 3600) % 24
         minutes = (total_seconds % 3600) // 60
         return f"{hours:02}:{minutes:02}"
-
-    # Caso 3: Se for uma string
     if isinstance(valor_horario, str):
         try:
-            # Tenta primeiro como HH:MM:SS
-            if valor_horario.count(':') == 2:
-                dt_obj = datetime.strptime(valor_horario, '%H:%M:%S')
-                return dt_obj.strftime('%H:%M')
-            # Depois como HH:MM
-            elif valor_horario.count(':') == 1:
-                dt_obj = datetime.strptime(valor_horario, '%H:%M')
-                return dt_obj.strftime('%H:%M') # Já está no formato, mas re-formata para garantir
-            else:
-                # Se não for um formato de tempo reconhecido, retorna a string original
-                return valor_horario
-        except ValueError:
-            # Se a conversão da string falhar
-            return valor_horario # Retorna a string original
-
-    # Fallback: Se não for nenhum dos tipos acima, tenta converter para string
+            if valor_horario.count(':') == 2: return datetime.strptime(valor_horario, '%H:%M:%S').strftime('%H:%M')
+            elif valor_horario.count(':') == 1: return datetime.strptime(valor_horario, '%H:%M').strftime('%H:%M')
+            return valor_horario
+        except ValueError: return valor_horario
     return str(valor_horario)
 
 
-@bp_converte_setor_estagiario_pdf.route('/api/setores/estagiar/pdf', methods=['POST']) # Rota alterada para clareza
-def converte_setores_estagiarios_pdf(): # Função renomeada para clareza
+@bp_converte_setor_estagiario_pdf.route('/api/setores/estagiar/pdf', methods=['POST'])
+def converte_setores_estagiarios_pdf():
+    conexao_principal = None # Para ser usado no try/finally da rota
     try:
         body = request.json or {}
-        setores_nomes = body.get('setores')  # Nomes dos setores a serem filtrados (lista)
+        setores_nomes = body.get('setores')
         mes_body = body.get('mes')
 
         if not setores_nomes or not isinstance(setores_nomes, list):
@@ -80,272 +105,198 @@ def converte_setores_estagiarios_pdf(): # Função renomeada para clareza
         mes_numerico = data_ano_mes_atual['mes_numerico']
         ano = data_ano_mes_atual['ano']
 
-        arquivos_zip_dos_setores = [] # Para armazenar caminhos dos zips específicos de cada setor
+        # --- Busca de feriados para o período intermensal (ANTES do loop de setores) ---
+        estado_para_feriados = 'AM' # Defina o estado padrão ou obtenha dinamicamente se necessário globalmente
+
+        feriados_mes_corrente_periodo = pegar_feriados_mes(ano, mes_numerico, estado=estado_para_feriados)
+        
+        ano_proximo_mes_periodo = ano
+        mes_numerico_proximo_periodo = mes_numerico + 1
+        if mes_numerico_proximo_periodo > 12:
+            mes_numerico_proximo_periodo = 1
+            ano_proximo_mes_periodo += 1
+        feriados_proximo_mes_periodo = pegar_feriados_mes(ano_proximo_mes_periodo, mes_numerico_proximo_periodo, estado=estado_para_feriados)
+        
+        todos_feriados_do_periodo = list(set(feriados_mes_corrente_periodo + feriados_proximo_mes_periodo))
+        print(f"DEBUG ROTA setor_estagiarios: Todos feriados para o período (mes {mes_numerico} e {mes_numerico_proximo_periodo}): {todos_feriados_do_periodo}")
+        # --- FIM da busca de feriados ---
+
+        arquivos_zip_dos_setores = []
 
         for setor_nome in setores_nomes:
-            conexao = connect_mysql()
-            cursor = conexao.cursor(dictionary=True)
+            conexao_principal = connect_mysql() # Conexão por setor
+            cursor = conexao_principal.cursor(dictionary=True)
 
-            # Busca todos os estagiários do setor especificado
             query = "SELECT * FROM estagiarios WHERE setor = %s"
             cursor.execute(query, (setor_nome,))
             estagiarios = cursor.fetchall()
 
             if not estagiarios:
-                if conexao.is_connected():
-                    conexao.close()
+                if conexao_principal and conexao_principal.is_connected():
+                    cursor.close()
+                    conexao_principal.close()
                 print(f"Nenhum estagiário encontrado no setor {setor_nome}, pulando.")
-                continue # Pula para o próximo setor
+                continue
 
             arquivos_pdf_gerados_neste_setor = []
             setor_limpo = setor_nome.strip().replace('/', '_')
-            caminho_pasta_base_setor = f"setor/estagiarios/{setor_limpo}/{mes_por_extenso}" # Adicionado 'estagiarios' ao caminho
+            caminho_pasta_base_setor = f"setor/estagiarios/{setor_limpo}/{mes_por_extenso}"
             os.makedirs(caminho_pasta_base_setor, exist_ok=True)
 
             for estagiario in estagiarios:
                 template_path = 'FREQUÊNCIA ESTAGIÁRIOS - MODELO.docx'
                 doc = Document(template_path)
-
-                cria_dias_da_celula(doc, ano, mes_numerico, estagiario)
+                
+                # Passa a lista de feriados combinada
+                cria_dias_da_celula(doc, ano, mes_numerico, estagiario, todos_feriados_do_periodo)
 
                 troca_de_dados = {
-                    "CAMPO SETOR": estagiario['setor'],
+                    "CAMPO SETOR": estagiario.get('setor', ''),
                     "CAMPO MÊS": mes_por_extenso,
-                    "CAMPO NOME": estagiario['nome'],
+                    "CAMPO NOME": estagiario.get('nome', ''),
                     "CAMPO ANO": str(ano),
-                    "CAMPO HORARIO": str(estagiario.get('horario', '')), # Adicionado string vazia como padrão
-                    "CAMPO ENTRADA": formatar_horario_para_hh_mm_v2(estagiario.get('horario_entrada', '')), # Adicionado string vazia como padrão
-                    "CAMPO SAÍDA": formatar_horario_para_hh_mm_v2(estagiario.get('horario_saida', '')), # Adicionado string vazia como padrão
-                    "CAMPO CARGO": str(estagiario.get('cargo', '')), # Adicionado string vazia como padrão
+                    "CAMPO HORARIO": str(estagiario.get('horario', '')),
+                    "CAMPO ENTRADA": formatar_horario_para_hh_mm_v2(estagiario.get('horario_entrada', '')),
+                    "CAMPO SAÍDA": formatar_horario_para_hh_mm_v2(estagiario.get('horario_saida', '')),
+                    "CAMPO CARGO": str(estagiario.get('cargo', '')),
                 }
-
                 for placeholder, valor in troca_de_dados.items():
                     muda_texto_documento(doc, placeholder, valor)
 
-                nome_limpo = estagiario['nome'].strip().replace('/', '_')
-
-                nome_base = f"FREQUENCIA_ESTAGIARIO_{nome_limpo.replace(' ', '_')}" # Adicionado ESTAGIARIO ao nome do arquivo
+                nome_limpo = estagiario.get('nome', 'NOME_PADRAO').strip().replace('/', '_')
+                nome_base = f"FREQUENCIA_ESTAGIARIO_{nome_limpo.replace(' ', '_')}"
                 docx_path = os.path.abspath(os.path.join(caminho_pasta_base_setor, f"{nome_base}.docx"))
                 pdf_path = os.path.abspath(os.path.join(caminho_pasta_base_setor, f"{nome_base}.pdf"))
-
                 doc.save(docx_path)
                 convert_to_pdf(docx_path, pdf_path)
                 arquivos_pdf_gerados_neste_setor.append(pdf_path)
-
-                # Salva no banco o caminho do PDF
                 cursor.execute(
-                    "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)", # Adicionado tipo_servidor
+                    "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)",
                     (estagiario['id'], pdf_path)
                 )
 
-            if arquivos_pdf_gerados_neste_setor: # Só cria o zip se houver PDFs
-                # Cria arquivo ZIP com todos os PDFs do setor de estagiários
-                zip_path_setor = f"setor/estagiarios/{setor_limpo}/frequencias_estagiarios_{setor_limpo}_{mes_por_extenso}.zip" # Adicionado 'estagiarios'
+            if arquivos_pdf_gerados_neste_setor:
+                zip_path_setor = f"setor/estagiarios/{setor_limpo}/frequencias_estagiarios_{setor_limpo}_{mes_por_extenso}.zip"
                 with zipfile.ZipFile(zip_path_setor, 'w') as zipf:
                     for pdf in arquivos_pdf_gerados_neste_setor:
                         zipf.write(pdf, os.path.basename(pdf))
-
                 arquivos_zip_dos_setores.append(zip_path_setor)
-
-                # Salva o ZIP do setor no banco
                 cursor.execute(
                     "INSERT INTO arquivos_zip (setor, mes, caminho_zip, tipo) VALUES (%s, %s, %s, %s)",
-                    (setor_nome, mes_por_extenso, zip_path_setor, 'estagiarios') # tipo 'estagiarios' para setor individual
+                    (setor_nome, mes_por_extenso, zip_path_setor, 'estagiarios_setor') # tipo ajustado
                 )
-
-            conexao.commit()
-            if conexao.is_connected():
-                conexao.close()
-
+            conexao_principal.commit()
+            if conexao_principal and conexao_principal.is_connected():
+                cursor.close()
+                conexao_principal.close()
+        
         if not arquivos_zip_dos_setores:
-            return jsonify({'erro': 'Nenhum arquivo ZIP de estagiários foi gerado para os setores selecionados'}), 404
+            return jsonify({'message': 'Nenhum arquivo ZIP de estagiários foi gerado (sem estagiários nos setores ou sem PDFs).'}), 200 # Mudado para 200 com mensagem
 
-        # Se mais de um setor de estagiários foi processado e gerou ZIPs, cria um ZIP final com todos os ZIPs dos setores
         if len(arquivos_zip_dos_setores) > 1:
-            zip_final_path = f"setor/estagiarios/frequencias_multissetores_estagiarios_{mes_body}.zip" # Nome distinto
+            zip_final_path = f"setor/estagiarios/frequencias_multissetores_estagiarios_{mes_body.replace('/','-')}_{ano}.zip" # Nome com ano e mes sem barra
             with zipfile.ZipFile(zip_final_path, 'w') as zipf:
                 for zip_file_setor in arquivos_zip_dos_setores:
                     zipf.write(zip_file_setor, os.path.basename(zip_file_setor))
-
-            # Salva o ZIP de multissetores de estagiários no banco
-            conexao = connect_mysql()
-            cursor = conexao.cursor(dictionary=True)
+            
+            # Salva o ZIP de multissetores (opcional, pode já ter sido salvo por setor)
+            # Se for salvar, precisa de uma conexão
+            conexao_principal = connect_mysql()
+            cursor = conexao_principal.cursor(dictionary=True)
             cursor.execute(
-                "INSERT INTO arquivos_zip (setor, mes, caminho_zip, tipo) VALUES (%s, %s, %s, %s)",
-                ('multiestagiarios', mes_por_extenso, zip_final_path, 'multiestagiarios') # tipo 'multiestagiarios'
+                "INSERT INTO arquivos_zip (setor, mes, ano, caminho_zip, tipo) VALUES (%s, %s, %s, %s, %s)", # Adicionado ano
+                ('multiestagiarios', mes_por_extenso, str(ano), zip_final_path, 'multiestagiarios_geral') # tipo ajustado
             )
-            conexao.commit()
-            if conexao.is_connected():
-                conexao.close()
+            conexao_principal.commit()
+            if conexao_principal and conexao_principal.is_connected():
+                cursor.close()
+                conexao_principal.close()
 
-            return send_file(
-                zip_final_path,
-                mimetype='application/zip',
-                as_attachment=True,
-                download_name=os.path.basename(zip_final_path) # Usa basename para nome do download
-            )
-        elif arquivos_zip_dos_setores: # Apenas um setor foi processado ou gerou um ZIP
-            return send_file(
-                arquivos_zip_dos_setores[0],
-                mimetype='application/zip',
-                as_attachment=True,
-                download_name=os.path.basename(arquivos_zip_dos_setores[0]) # Usa basename para nome do download
-            )
-        # Este caso 'else' idealmente seria capturado por "if not arquivos_zip_dos_setores" anteriormente
+            return send_file(zip_final_path, mimetype='application/zip', as_attachment=True, download_name=os.path.basename(zip_final_path))
+        elif arquivos_zip_dos_setores:
+            return send_file(arquivos_zip_dos_setores[0], mimetype='application/zip', as_attachment=True, download_name=os.path.basename(arquivos_zip_dos_setores[0]))
+        
+        return jsonify({'message': 'Processamento concluído, mas nenhum ZIP para enviar (caso de um único setor sem PDFs).'}), 200
 
     except Exception as exception:
-        if 'conexao' in locals() and conexao.is_connected():
-            conexao.close()
+        print(f"ERRO ROTA SETOR ESTAGIARIOS: {str(exception)}")
+        # import traceback; traceback.print_exc(); # Para debug detalhado
+        if conexao_principal and conexao_principal.is_connected():
+            cursor.close() # Garante que o cursor seja fechado se foi aberto
+            conexao_principal.close()
         return jsonify({'erro': f'Erro ao processar setores de estagiários: {str(exception)}'}), 500
 
-def cria_dias_da_celula(doc, ano, mes_numerico, estagiario):
-    # from datetime import datetime, timedelta, date # Movido para imports de nível superior
-
-    def calcula_periodo_21_a_20(ano_calc, mes_calc): # Parâmetros renomeados para evitar conflito
+# Modificado para aceitar 'feriados' e aplicar a lógica
+def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados): # Adicionado 'feriados'
+    def calcula_periodo_21_a_20(ano_calc, mes_calc):
         data_inicio = datetime(ano_calc, mes_calc, 21)
-        if mes_calc == 12:
-            data_fim = datetime(ano_calc + 1, 1, 20)
-        else:
-            data_fim = datetime(ano_calc, mes_calc + 1, 20)
-
+        if mes_calc == 12: data_fim = datetime(ano_calc + 1, 1, 20)
+        else: data_fim = datetime(ano_calc, mes_calc + 1, 20)
         dias_periodo = []
-        data_atual_loop = data_inicio # Renomeado para evitar conflito
+        data_atual_loop = data_inicio
         while data_atual_loop <= data_fim:
-            dias_periodo.append({
-                "dia": data_atual_loop.day,
-                "mes": data_atual_loop.month,
-                "ano": data_atual_loop.year
-            })
+            dias_periodo.append({"dia": data_atual_loop.day, "mes": data_atual_loop.month, "ano": data_atual_loop.year})
             data_atual_loop += timedelta(days=1)
         return dias_periodo
 
-    linha_inicial = 7  # Ajuste conforme necessário
-
+    linha_inicial = 7
     for table in doc.tables:
-        # Configurar linhas existentes
-        for row_idx, row in enumerate(table.rows): # Use enumerate se o índice for necessário para linhas de cabeçalho específicas
-            row.height = Cm(0.55)
-            row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+        for row in table.rows: # Configurações básicas de formatação
+            row.height = Cm(0.55); row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
             for cell in row.cells:
                 for paragraph in cell.paragraphs:
                     paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                    for run in paragraph.runs:
-                        run.font.name = "Calibri"
-                        run.font.size = Pt(7)
-                        run.font.bold = False
+                    for run in paragraph.runs: run.font.name = "Calibri"; run.font.size = Pt(7); run.font.bold = False
+        
+        dias_periodo = calcula_periodo_21_a_20(ano_param, mes_param)
+        total_needed_rows = linha_inicial + len(dias_periodo)
+        while len(table.rows) < total_needed_rows:
+            new_row = table.add_row()
+            new_row.height = Cm(0.55); new_row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+            for cell_idx in range(len(table.columns)):
+                new_cell = new_row.cells[cell_idx]
+                p = new_cell.paragraphs[0] if new_cell.paragraphs else new_cell.add_paragraph()
+                p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                if not p.runs: run = p.add_run(); run.font.name = "Calibri"; run.font.size = Pt(7)
 
-        dias_periodo = calcula_periodo_21_a_20(ano, mes_numerico)
-
-        # Garante que a tabela tenha linhas suficientes antes de tentar acessá-las
-        # Começa a adicionar linhas a partir do número atual de linhas até linha_inicial + len(dias_periodo)
-        # Esta parte assume que o template tem *pelo menos* `linha_inicial` linhas.
-        # Se o template puder ter menos, esta lógica precisa ser mais robusta.
-
-        current_rows = len(table.rows)
-        needed_data_rows = len(dias_periodo)
-        total_needed_rows = linha_inicial + needed_data_rows
-
-        if current_rows < total_needed_rows:
-            for _ in range(total_needed_rows - current_rows):
-                new_row = table.add_row()
-                # Configure as propriedades das novas células da linha aqui se elas diferirem do padrão ou do loop acima
-                new_row.height = Cm(0.55)
-                new_row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-                for cell_idx in range(len(table.columns)): # Assume que todas as linhas têm o mesmo número de colunas
-                    new_cell = new_row.cells[cell_idx] # Acessa por índice se necessário
-                    # new_cell.width = Cm(1.5) # Definir largura para células individuais pode ser complicado, geralmente feito no nível da coluna
-                    for paragraph in new_cell.paragraphs:
-                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                        # Adiciona um run padrão para definir propriedades da fonte se a célula estiver vazia
-                        run = paragraph.add_run()
-                        run.font.name = "Calibri"
-                        run.font.size = Pt(7)
-
-
-        # Preenchimento dos dias
         for i, dia_info in enumerate(dias_periodo):
-            dia = dia_info["dia"]
-            mes = dia_info["mes"]
-            ano_dia = dia_info["ano"]
-
-            if (linha_inicial + i) >= len(table.rows):
-                print(f"AVISO: Tentando acessar linha {linha_inicial + i} que não existe. Dias: {len(dias_periodo)}, Linhas Tabela: {len(table.rows)}")
-                # Isso não deve acontecer se a lógica de adição de linha acima estiver correta
-                continue
-
+            dia, mes_iter, ano_dia = dia_info["dia"], dia_info["mes"], dia_info["ano"]
             row = table.rows[linha_inicial + i]
-            dia_semana = pega_final_de_semana(ano_dia, mes, dia)
+            
+            for cell in row.cells: # Limpeza de células
+                for p in cell.paragraphs: p.clear()
+                p_cell = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph(); p_cell.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-            # Limpa células antes de preencher
-            for cell_idx in range(len(row.cells)):
-                cell = row.cells[cell_idx]
-                # Limpa completamente o conteúdo existente
-                for paragraph in cell.paragraphs:
-                    for run in paragraph.runs:
-                        run.clear() # Limpa runs
-                    if len(cell.paragraphs) > 1: # Se houver mais de um parágrafo, remove os extras
-                        for p_extra_idx in range(len(cell.paragraphs) -1, 0, -1): # Itera de trás para frente para remover
-                            p_extra = cell.paragraphs[p_extra_idx]
-                            cell._element.remove(p_extra._p)
-                # Garante que pelo menos um parágrafo exista e esteja limpo
-                if not cell.paragraphs:
-                    cell.add_paragraph()
-                cell.paragraphs[0].clear() # Limpa o primeiro/principal parágrafo
-                cell.paragraphs[0].alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            dia_run = row.cells[0].paragraphs[0].add_run(str(dia)) # Dia
+            dia_run.font.name = "Calibri"; dia_run.font.size = Pt(8)
 
+            current_date_obj = date(ano_dia, mes_iter, dia)
+            dia_semana = pega_final_de_semana(ano_dia, mes_iter, dia)
+            text_to_write = None
 
-            # Preenche dia
-            dia_cell = row.cells[0]
-            dia_paragraph = dia_cell.paragraphs[0] # Deve existir devido à lógica de limpeza
-            # dia_paragraph.clear() # Já limpo acima
-            dia_run = dia_paragraph.add_run(str(dia))
-            dia_run.font.name = "Calibri"
-            dia_run.font.size = Pt(8)
-            dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-
-            text_to_write = ""
-            is_special_day = False
-
-            # Verifica férias primeiro, as férias podem sobrepor o final de semana no texto
             if estagiario.get('feriasinicio') and estagiario.get('feriasfinal'):
-                ferias_inicio = estagiario['feriasinicio']
-                ferias_final = estagiario['feriasfinal']
-                # Garante que ferias_inicio e ferias_final sejam objetos date se vierem do BD como datetime
-                if hasattr(ferias_inicio, 'date'):
-                    ferias_inicio = ferias_inicio.date()
-                if hasattr(ferias_final, 'date'):
-                    ferias_final = ferias_final.date()
-
-                current_date_obj = date(ano_dia, mes, dia)
-
-                if ferias_inicio <= current_date_obj <= ferias_final:
+                ferias_inicio_raw = estagiario['feriasinicio']
+                ferias_final_raw = estagiario['feriasfinal']
+                ferias_inicio = ferias_inicio_raw.date() if isinstance(ferias_inicio_raw, datetime) else ferias_inicio_raw
+                ferias_final = ferias_final_raw.date() if isinstance(ferias_final_raw, datetime) else ferias_final_raw
+                if isinstance(ferias_inicio, date) and isinstance(ferias_final, date) and (ferias_inicio <= current_date_obj <= ferias_final):
                     text_to_write = "FÉRIAS"
-                    is_special_day = True
-
-            # Se não for férias, verifica final de semana
-            if not is_special_day:
-                if dia_semana == 5:    # Sábado
-                    text_to_write = "SÁBADO"
-                    is_special_day = True
-                elif dia_semana == 6:   # Domingo
-                    text_to_write = "DOMINGO"
-                    is_special_day = True
-
-            if is_special_day:
-                # Índices das células parecem ser [2, 5, 8, 12] conforme seu código original
-                # Estes podem corresponder a colunas específicas como 'Entrada AM', 'Saida AM', 'Entrada PM', 'Saida PM'
-                # Garanta que esses índices estejam corretos para o seu template.
-                column_indices_for_special_text = [2, 5, 8, 12]
-                for j in column_indices_for_special_text:
-                    if j < len(row.cells):
-                        cell = row.cells[j]
-                        # cell.text = text_to_write # Usando add_run para melhor controle
-                        p = cell.paragraphs[0] # Deve existir
-                        # p.clear() # Já limpo
-                        run = p.add_run(text_to_write)
-                        run.font.bold = True
-                        run.font.name = "Calibri" # Garante consistência da fonte
-                        run.font.size = Pt(7)     # Garante consistência da fonte
-                        p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                    else:
-                        print(f"AVISO: Índice de coluna {j} fora do alcance para a linha {linha_inicial + i}")
+            
+            if text_to_write is None and current_date_obj in feriados and dia_semana not in [5, 6]:
+                text_to_write = "FERIADO"
+            
+            if text_to_write is None:
+                if dia_semana == 5: text_to_write = "SÁBADO"
+                elif dia_semana == 6: text_to_write = "DOMINGO"
+            
+            if text_to_write:
+                column_indices = [2, 5, 8, 12] # Padrão para SÁBADO, DOMINGO, FÉRIAS
+                if text_to_write == "FERIADO": # Seu código original especificava colunas diferentes para FERIADO de estagiário
+                     column_indices = [2, 5, 9] # Verifique se isto está correto para o template de estagiário
+                
+                for j_idx in column_indices:
+                    if j_idx < len(row.cells):
+                        cell_marcar = row.cells[j_idx]
+                        p_marcar = cell_marcar.paragraphs[0]
+                        run_marcar = p_marcar.add_run(text_to_write)
+                        run_marcar.font.bold = True; run_marcar.font.name = "Calibri"; run_marcar.font.size = Pt(7)
