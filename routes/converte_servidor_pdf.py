@@ -237,82 +237,148 @@ def converte_servidor_pdf():
 def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario, feriados):
     linha_inicial = 8
 
-    for table in doc.tables:
-        for row in table.rows:
-            row.height = Cm(0.5)
-            row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-            for cell in row.cells:
-                for paragraph in cell.paragraphs:
-                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                    for run in paragraph.runs:
-                        run.font.name = "Calibri"
-                        run.font.size = Pt(7)
-                        run.font.bold = False
+    if not doc.tables:
+        print("AVISO: Nenhum tabela encontrada no documento.")
+        return
+    
+    table = doc.tables[0] # Assume-se que a primeira tabela é a de frequência
 
-        if len(table.rows) < linha_inicial + quantidade_dias_no_mes:
-            for _ in range(linha_inicial + quantidade_dias_no_mes - len(table.rows)):
-                new_row = table.add_row()
-                for cell in new_row.cells:
-                    cell.width = Cm(1.5)
-                    for paragraph in cell.paragraphs:
-                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    # 1. Aplicar formatação base em todas as linhas existentes (como no seu código original)
+    # Esta formatação pode ser muito genérica; idealmente, o template já teria os estilos corretos
+    # para cabeçalhos vs. dados, mas vamos manter sua lógica original por enquanto.
+    for row in table.rows:
+        row.height = Cm(0.5)
+        row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                for run in paragraph.runs:
+                    run.font.name = "Calibri"
+                    run.font.size = Pt(7)
+                    run.font.bold = False
 
-        for i in range(quantidade_dias_no_mes):
-            dia = i + 1
-            dia_semana = pega_final_de_semana(ano, mes_numerico, dia)
-            data_atual = date(ano, mes_numerico, dia)
-            row = table.rows[linha_inicial + i]
+    # 2. Ajustar o número de linhas na tabela para corresponder à quantidade_dias_no_mes
+    # Linhas de dados necessárias = quantidade_dias_no_mes
+    # Total de linhas que a tabela deve ter = linha_inicial (cabeçalho) + quantidade_dias_no_mes
+    target_total_rows_in_table = linha_inicial + quantidade_dias_no_mes
 
-            for cell in row.cells:
-                cell.text = ""
-                for paragraph in cell.paragraphs:
-                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                    paragraph.clear()
+    # Remover linhas excedentes do final da tabela
+    while len(table.rows) > target_total_rows_in_table:
+        row_to_delete = table.rows[-1] # Pega a última linha da tabela
+        tbl_element = table._tbl
+        tr_element = row_to_delete._tr
+        tbl_element.remove(tr_element)
+        print(f"INFO: Linha excedente removida. Total de linhas agora: {len(table.rows)}")
 
-            # Preencher número do dia
-            dia_cell = row.cells[0]
-            dia_paragraph = dia_cell.paragraphs[0]
-            dia_run = dia_paragraph.add_run(str(dia))
-            dia_run.font.name = "Calibri"
-            dia_run.font.size = Pt(8)
-            dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+    # Adicionar linhas se estiverem faltando
+    while len(table.rows) < target_total_rows_in_table:
+        new_row = table.add_row()
+        new_row.height = Cm(0.5) # Aplicar altura padrão às novas linhas
+        new_row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+        # Garante que as células da nova linha tenham parágrafos formatados
+        for cell in new_row.cells:
+            # Assegura que existe pelo menos um parágrafo e o alinha
+            p = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
+            p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            # Pode-se definir a fonte padrão para o parágrafo ou para um run vazio aqui, se necessário
+            # Mas geralmente o estilo da tabela ou a formatação do conteúdo adicionado depois cuidará disso.
+        print(f"INFO: Linha faltante adicionada. Total de linhas agora: {len(table.rows)}")
 
-            # Sábados e Domingos
-            if dia_semana == 5:
-                texto = "SÁBADO"
-            elif dia_semana == 6:
-                texto = "DOMINGO"
-            else:
-                texto = ""
+    # 3. Preencher as linhas de dados (seu código original a partir daqui)
+    for i in range(quantidade_dias_no_mes):
+        dia = i + 1
+        # Agora é seguro acessar table.rows[linha_inicial + i]
+        row = table.rows[linha_inicial + i]
+        data_atual = date(ano, mes_numerico, dia) # Use o nome data_atual como no seu código
+        dia_semana = pega_final_de_semana(ano, mes_numerico, dia) # Assume que esta função existe
 
-            if texto:
-                for j in [2, 5, 9, 13]:
+        # Limpeza das células da linha atual antes de preencher
+        for cell in row.cells:
+            cell.text = "" # Limpa o conteúdo principal da célula (primeiro parágrafo)
+            for paragraph in cell.paragraphs: # Itera sobre todos os parágrafos
+                paragraph.clear() # Limpa todos os 'runs' (texto formatado) de cada parágrafo
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER # Garante o alinhamento
+
+        # Preencher número do dia
+        dia_cell = row.cells[0]
+        # Garante que há um parágrafo para adicionar o run
+        dia_paragraph = dia_cell.paragraphs[0] if dia_cell.paragraphs else dia_cell.add_paragraph()
+        dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER # Reafirma o alinhamento se for um novo parágrafo
+        dia_run = dia_paragraph.add_run(str(dia))
+        dia_run.font.name = "Calibri"
+        dia_run.font.size = Pt(8)
+        # dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER # Já definido
+
+        # Lógica para Sábados, Domingos, Feriados e Férias
+        # A ordem das suas verificações originais define a prioridade (a última condição que sobrescreve cell.text vence)
+        
+        texto_status = "" # Para Sábado/Domingo
+
+        if dia_semana == 5:
+            texto_status = "SÁBADO"
+        elif dia_semana == 6:
+            texto_status = "DOMINGO"
+
+        if texto_status: # Escreve SÁBADO ou DOMINGO
+            for j in [2, 5, 9, 13]: # Seus índices de coluna originais
+                if j < len(row.cells):
                     cell = row.cells[j]
-                    cell.text = texto
+                    cell.text = texto_status # Define o texto, limpando parágrafos anteriores
+                    # Reaplicar formatação após cell.text
                     for paragraph in cell.paragraphs:
-                        for run in paragraph.runs:
-                            run.font.bold = True
                         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                        for run in paragraph.runs: # O texto agora está em um ou mais runs
+                            run.font.bold = True
+                            run.font.name = "Calibri" # Garantir consistência
+                            run.font.size = Pt(7)     # Garantir consistência
+                else:
+                    print(f"AVISO: Índice de coluna {j} para S/D fora dos limites.")
 
-            # Feriado (exceto se for sábado ou domingo)
-            if data_atual in feriados and dia_semana not in [5, 6]:
-                for j in [2, 5, 9, 13]:
+
+        # Feriado (exceto se for sábado ou domingo) - sobrescreve células se for o caso
+        if data_atual in feriados and dia_semana not in [5, 6]:
+            for j in [2, 5, 9, 13]:
+                if j < len(row.cells):
                     cell = row.cells[j]
                     cell.text = "FERIADO"
                     for paragraph in cell.paragraphs:
+                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                         for run in paragraph.runs:
                             run.font.bold = True
-                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                            run.font.name = "Calibri"
+                            run.font.size = Pt(7)
+                else:
+                    print(f"AVISO: Índice de coluna {j} para FERIADO fora dos limites.")
 
-            # Férias (exceto fins de semana)
-            if funcionario.get('feriasinicio') and funcionario.get('feriasfinal'):
-                ferias_inicio = funcionario['feriasinicio'].date() if hasattr(funcionario['feriasinicio'], 'date') else funcionario['feriasinicio']
-                ferias_final = funcionario['feriasfinal'].date() if hasattr(funcionario['feriasfinal'], 'date') else funcionario['feriasfinal']
-                if ferias_inicio <= data_atual <= ferias_final and dia_semana not in [5, 6]:
-                    for j in [2, 5, 9, 13]:
+
+        # Férias (exceto fins de semana) - sobrescreve células se for o caso
+        if funcionario.get('feriasinicio') and funcionario.get('feriasfinal'):
+            ferias_inicio_raw = funcionario['feriasinicio']
+            ferias_final_raw = funcionario['feriasfinal']
+            ferias_inicio = ferias_inicio_raw.date() if hasattr(ferias_inicio_raw, 'date') else ferias_inicio_raw
+            ferias_final = ferias_final_raw.date() if hasattr(ferias_final_raw, 'date') else ferias_final_raw
+
+            if isinstance(ferias_inicio, date) and isinstance(ferias_final, date) and \
+               (ferias_inicio <= data_atual <= ferias_final and dia_semana not in [5, 6]):
+                for j in [2, 5, 9, 13]:
+                    if j < len(row.cells):
                         cell = row.cells[j]
                         cell.text = "FÉRIAS"
                         for paragraph in cell.paragraphs:
+                            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                             for run in paragraph.runs:
                                 run.font.bold = True
-                            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                                run.font.name = "Calibri"
+                                run.font.size = Pt(7)
+                    else:
+                        print(f"AVISO: Índice de coluna {j} para FÉRIAS fora dos limites.")
+    
+    # Se você tem múltiplas tabelas no documento e só quer processar a primeira,
+    # o loop `for table in doc.tables:` pode ser removido ou adicionar um `break` no final.
+    # Se o código original processava todas, mantenha o loop. Pela sua estrutura, parece que
+    # a intenção é processar a primeira tabela de frequência encontrada.
+    # Adicionando um break para processar apenas a primeira tabela, que é o comportamento mais comum.
+    # Remova este 'break' se você intencionalmente processa múltiplas tabelas de frequência no mesmo doc.
+    # No seu código original, não havia break, então o loop for table continuaria.
+    # Para este ajuste de linhas, faz mais sentido focar em UMA tabela principal.
+    # Se o loop for table for mantido, a lógica de ajuste de linhas será aplicada a cada tabela.

@@ -259,8 +259,12 @@ def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados): # Adic
                 p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                 if not p.runs: run = p.add_run(); run.font.name = "Calibri"; run.font.size = Pt(7)
 
-        for i, dia_info in enumerate(dias_periodo):
+    for i, dia_info in enumerate(dias_periodo):
             dia, mes_iter, ano_dia = dia_info["dia"], dia_info["mes"], dia_info["ano"]
+            
+            # Adicionada verificação se é o último dia do período
+            is_ultimo_dia_do_periodo = (i == len(dias_periodo) - 1)
+
             row = table.rows[linha_inicial + i]
             
             for cell in row.cells: # Limpeza de células
@@ -282,21 +286,44 @@ def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados): # Adic
                 if isinstance(ferias_inicio, date) and isinstance(ferias_final, date) and (ferias_inicio <= current_date_obj <= ferias_final):
                     text_to_write = "FÉRIAS"
             
-            if text_to_write is None and current_date_obj in feriados and dia_semana not in [5, 6]:
+            if text_to_write is None and current_date_obj in feriados and dia_semana not in [5, 6]: # 'feriados' deve ser passado para esta função
                 text_to_write = "FERIADO"
             
             if text_to_write is None:
                 if dia_semana == 5: text_to_write = "SÁBADO"
                 elif dia_semana == 6: text_to_write = "DOMINGO"
             
+            column_indices_para_texto_especial = [2, 5, 8, 12] # Seu padrão para SÁBADO, DOMINGO, FÉRIAS
+            if text_to_write == "FERIADO":
+                 column_indices_para_texto_especial = [2, 5, 9] # Seu padrão para FERIADO de estagiário
+
             if text_to_write:
-                column_indices = [2, 5, 8, 12] # Padrão para SÁBADO, DOMINGO, FÉRIAS
-                if text_to_write == "FERIADO": # Seu código original especificava colunas diferentes para FERIADO de estagiário
-                     column_indices = [2, 5, 9] # Verifique se isto está correto para o template de estagiário
-                
-                for j_idx in column_indices:
+                for j_idx in column_indices_para_texto_especial:
                     if j_idx < len(row.cells):
                         cell_marcar = row.cells[j_idx]
-                        p_marcar = cell_marcar.paragraphs[0]
+                        p_marcar = cell_marcar.paragraphs[0] # Assumindo que a limpeza garantiu este parágrafo
+                        # Limpar o parágrafo novamente antes de adicionar novo run para evitar sobreposição se a limpeza anterior não foi perfeita
+                        p_marcar.clear() 
                         run_marcar = p_marcar.add_run(text_to_write)
                         run_marcar.font.bold = True; run_marcar.font.name = "Calibri"; run_marcar.font.size = Pt(7)
+                        p_marcar.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER # Garantir alinhamento
+            elif is_ultimo_dia_do_periodo:
+                # Se é o último dia e não há texto especial (dia de trabalho normal),
+                # vamos tentar adicionar um espaço não quebrável nas colunas que *poderiam* ter texto,
+                # para evitar que colapsem.
+                # Use o conjunto mais abrangente de colunas que podem ter texto especial.
+                # Ou, identifique as colunas exatas que estão mostrando o problema na imagem.
+                # A imagem mostra 4 "traços", que correspondem às posições onde "SÁBADO"/"DOMINGO" aparecem.
+                colunas_problematicas_dia20 = [3, 6, 7, 12] # Ajuste se forem outras. Estas são as de SÁBADO/DOMINGO/FÉRIAS.
+                                                           # Se as colunas de FERIADO são diferentes e também problemáticas, inclua-as.
+                                                           # Ex: list(set([2,5,8,12] + [2,5,9])) -> [2,5,8,9,12]
+
+                for j_idx in colunas_problematicas_dia20: # Use o conjunto que corresponde às colunas da imagem
+                    if j_idx < len(row.cells):
+                        cell_vazia = row.cells[j_idx]
+                        p_vazia = cell_vazia.paragraphs[0]
+                        p_vazia.clear() # Garante que está limpo
+                        run_vazia = p_vazia.add_run('\u00A0') # Espaço não quebrável (nbsp)
+                        # Aplicar a mesma formatação de fonte para consistência, mesmo que seja invisível
+                        run_vazia.font.name = "Calibri"; run_vazia.font.size = Pt(7)
+                        p_vazia.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
