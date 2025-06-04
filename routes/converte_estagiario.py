@@ -21,26 +21,27 @@ bp_converte_estagiario_pdf = Blueprint('bp_converte_estagiario_pdf', __name__)
 
 def pegar_feriados_mes(ano, mes, estado='AM', cidade=None):
     br_feriados = holidays.Brazil(state=estado)
-
-    # Adiciona Corpus Christi manualmente (60 dias após a Páscoa)
     pascoa = easter(ano)
     corpus_christi = pascoa + timedelta(days=60)
     br_feriados[corpus_christi] = "Corpus Christi"
 
-    # (Opcional) Feriados municipais
     feriados_municipais = {
         'Manaus': [
-            date(ano, 10, 24),  # Aniversário de Manaus
+            date(ano, 10, 24),
         ]
     }
-
     if cidade in feriados_municipais:
         for feriado in feriados_municipais[cidade]:
             br_feriados[feriado] = "Feriado Municipal"
 
-    # Retorna apenas os do mês desejado
-    feriados_mes = [d for d in br_feriados if d.month == mes]
-    return feriados_mes
+    # Pega feriados do mês e do mês seguinte (até dia 20)
+    feriados_periodo = []
+    for d in br_feriados:
+        if (d.year == ano and d.month == mes) or \
+           (d.year == ano and d.month == (mes % 12) + 1 and d.day <= 20) or \
+           (mes == 12 and d.year == ano + 1 and d.month == 1 and d.day <= 20):
+            feriados_periodo.append(d)
+    return feriados_periodo
 
 
 def formatar_horario_para_hh_mm_v2(valor_horario):
@@ -246,8 +247,11 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados):
 
         for i, dia_info in enumerate(dias_periodo):
             dia = dia_info["dia"]
-            mes_iter = dia_info["mes"] # Renomeado para mes_iter para evitar confusão com o parâmetro 'mes'
+            mes_iter = dia_info["mes"]
             ano_dia = dia_info["ano"]
+
+            # Verifica se é o último dia do período (dia 20)
+            is_ultimo_dia = (i == len(dias_periodo) - 1) or (dia == 20 and (i == len(dias_periodo) - 1))
 
             # ***** CORREÇÃO PRINCIPAL *****
             # Defina a data da iteração atual AQUI
@@ -267,6 +271,8 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados):
 
             row = table.rows[linha_inicial + i]
             
+            print(f"Row {linha_inicial + i} tem {len(row.cells)} células")
+               
             for cell in row.cells:
                 cell.text = ""
                 for paragraph in cell.paragraphs:
@@ -314,7 +320,7 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados):
                 # Células para FERIADO: [2, 5, 9, 13] - ATENÇÃO: Diferente! Verifique se está correto.
                 celulas_para_marcar = [2, 5, 8, 12]
                 if texto == "FERIADO":
-                     celulas_para_marcar = [2, 5, 9, 13] # Manteve a lógica original, mas verifique.
+                     celulas_para_marcar = [2, 5, 9] # Manteve a lógica original, mas verifique.
 
                 for j in celulas_para_marcar:
                     if j < len(row.cells): # Verificação de segurança
@@ -331,3 +337,14 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados):
                         p_cell.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                     else:
                         print(f"Aviso: Índice de célula {j} fora do alcance para a linha.")
+            if len(row.cells) != 13:
+                print(f"Linha {linha_inicial + i} ignorada por ter {len(row.cells)} células.")
+                continue
+            if is_ultimo_dia:
+                # Aqui você pode aplicar qualquer lógica especial para a linha do dia 20
+                print(f"Tratando linha especial para o dia 20: {dia}/{mes_iter}/{ano_dia}")
+                # Exemplo: garantir que a linha tenha 13 células
+                if len(row.cells) != 13:
+                    print(f"Ajustando número de células da linha do dia 20")
+                    # Adicione células ou trate conforme necessário
+                # Ou aplicar formatação diferente, texto, etc.

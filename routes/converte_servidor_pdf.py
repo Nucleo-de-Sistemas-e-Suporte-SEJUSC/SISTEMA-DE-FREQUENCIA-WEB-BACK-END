@@ -19,28 +19,28 @@ from dateutil.easter import easter
 
 bp_converte_servidor_pdf = Blueprint('bp_converte_servidor_pdf', __name__)
 
-def pegar_feriados_mes(ano, mes, estado='AM', cidade=None):
+def pegar_feriados_mes(ano, mes, estado='AM'):
     br_feriados = holidays.Brazil(state=estado)
-
-    # Adiciona Corpus Christi manualmente (60 dias após a Páscoa)
     pascoa = easter(ano)
     corpus_christi = pascoa + timedelta(days=60)
     br_feriados[corpus_christi] = "Corpus Christi"
 
-    # (Opcional) Feriados municipais
-    feriados_municipais = {
-        'Manaus': [
-            date(ano, 10, 24),  # Aniversário de Manaus
-        ]
-    }
+    # Busca feriados municipais do banco pelo estado
+    conexao = connect_mysql()
+    cursor = conexao.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT data FROM feriados_municipais WHERE estado = %s AND YEAR(data) = %s",
+        (estado, ano)
+    )
+    feriados_municipais = [row['data'] for row in cursor.fetchall()]
+    conexao.close()
+    for data_str in feriados_municipais:
+        data_feriado = date.fromisoformat(str(data_str))
+        br_feriados[data_feriado] = "Feriado Municipal"
 
-    if cidade in feriados_municipais:
-        for feriado in feriados_municipais[cidade]:
-            br_feriados[feriado] = "Feriado Municipal"
-
-    # Retorna apenas os do mês desejado
     feriados_mes = [d for d in br_feriados if d.month == mes]
     return feriados_mes
+
 def limpa_nome(nome):
     return re.sub(r'[^\w\s-]', '', nome).strip().replace(' ', '_')
 
@@ -127,9 +127,10 @@ def converte_servidor_pdf():
             return jsonify({'erro': 'Nenhum funcionário encontrado'}), 404
 
         arquivos_gerados = []
-        feriados_do_mes = pegar_feriados_mes(ano, mes_numerico)
-
+    
         for funcionario in funcionarios:
+            estado_funcionarios = funcionarios.get('estado', 'AM')  # Padrão para AM, pode ser ajustado conforme necessário
+            feriados_do_mes = pegar_feriados_mes(ano, mes_numerico,estado=estado_funcionarios)
             template_path = 'FREQUÊNCIA_MENSAL.docx'
             doc = Document(template_path)
 
