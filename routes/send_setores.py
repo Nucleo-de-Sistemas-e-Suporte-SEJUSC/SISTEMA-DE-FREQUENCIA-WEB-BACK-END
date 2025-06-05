@@ -35,11 +35,11 @@ def download_zip(setor, mes):
 
         if is_estagiarios:
             # Adicionado LIMIT 1
-            query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND tipo='estagiarios' LIMIT 1"
+            query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND tipo='estagiarios_setor' LIMIT 1"
             params = (setor_para_consulta_db, mes_formatado)
         else:
             # Adicionado LIMIT 1
-            query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND (tipo IS NULL OR tipo != 'estagiarios') LIMIT 1"
+            query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND (tipo IS NULL OR tipo != 'estagiarios_setor') LIMIT 1"
             params = (setor_para_consulta_db, mes_formatado)
 
         print(f"Executando SQL: {query} com params: {params}")
