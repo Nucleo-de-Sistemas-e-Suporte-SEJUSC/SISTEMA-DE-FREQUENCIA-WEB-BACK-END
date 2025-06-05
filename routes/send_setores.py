@@ -55,6 +55,7 @@ def download_zip(setor, mes):
             return jsonify({'erro': 'Arquivo ZIP não encontrado no banco de dados para os critérios fornecidos'}), 404
 
         zip_path_from_db = result["caminho_zip"]
+        
         zip_path_verified = os.path.normpath(zip_path_from_db) # Use o caminho EXATO do DB
 
         print(f"Caminho do arquivo no DB: '{zip_path_from_db}'")

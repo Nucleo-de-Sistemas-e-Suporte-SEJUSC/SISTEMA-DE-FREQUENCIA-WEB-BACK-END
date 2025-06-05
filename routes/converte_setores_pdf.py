@@ -163,6 +163,7 @@ def converte_setores_pdf():
                 doc.save(docx_path)
                 convert_to_pdf(docx_path, pdf_path)
                 arquivos_pdf_gerados_neste_setor.append(pdf_path)
+
                 cursor.execute(
                     "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)",
                     (funcionario['id'], pdf_path)

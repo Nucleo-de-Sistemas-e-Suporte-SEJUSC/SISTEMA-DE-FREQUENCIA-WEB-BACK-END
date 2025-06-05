@@ -14,7 +14,7 @@ def download_zip_multiestagiarios_estagiarios(mes): # Função renomeada
         # Busca o ZIP mais recente de multiestagiarios para o mês
         # Nota: setor é 'multiestagiarios' e tipo é 'multiestagiarios' conforme a lógica de geração
         cursor.execute(
-            "SELECT caminho_zip FROM arquivos_zip WHERE mes=%s AND tipo='multiestagiarios' AND setor='multiestagiarios' ORDER BY id DESC LIMIT 1",
+            "SELECT caminho_zip FROM arquivos_zip WHERE mes=%s AND tipo='multiestagiarios_geral' AND setor='multiestagiarios' ORDER BY id DESC LIMIT 1",
             (mes_formatado,)
         )
         result = cursor.fetchone()
