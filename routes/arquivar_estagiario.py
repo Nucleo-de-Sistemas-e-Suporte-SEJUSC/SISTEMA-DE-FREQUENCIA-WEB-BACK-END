@@ -10,7 +10,6 @@ bp_arquivar_estagiario = Blueprint('bp_arquivar_estagiario', __name__)
 #@login_required
 #@roles_required('admin')
 def arquivar_estagiario(id):
-    print("Cheguei aqui")
     try:
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)

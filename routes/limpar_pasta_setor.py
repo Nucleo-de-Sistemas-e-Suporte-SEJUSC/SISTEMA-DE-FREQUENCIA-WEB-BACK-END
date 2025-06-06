@@ -2,7 +2,6 @@ import shutil # 👈 Adicione esta importação no topo do seu arquivo
 from flask import Blueprint, jsonify
 import os
 
-# ... (outras importações e a definição do seu blueprint)
 bp_limpar_pasta_setor = Blueprint('bp_limpar_pasta_setor', __name__)
 
 @bp_limpar_pasta_setor.route('/api/limpar/setor', methods=['DELETE'])
@@ -25,6 +24,5 @@ def limpar_pasta_setor():
             return jsonify({'status': 'info', 'mensagem': f"A pasta '{pasta_alvo}' não existia."}), 200
             
     except Exception as e:
-        # Captura erros inesperados (ex: problemas de permissão)
         print(f"ERRO: Falha ao limpar a pasta '{pasta_alvo}'. Erro: {e}")
         return jsonify({'erro': f"Falha ao limpar a pasta: {str(e)}"}), 500
