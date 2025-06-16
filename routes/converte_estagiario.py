@@ -16,8 +16,27 @@ from datetime import time, timedelta, datetime
 from datetime import date
 from dateutil.easter import easter
 import holidays
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+
 
 bp_converte_estagiario_pdf = Blueprint('bp_converte_estagiario_pdf', __name__)
+
+
+
+def set_cell_background(cell, color_hex):
+    """
+    Define a cor de fundo da célula (color_hex no formato 'RRGGBB', ex: 'B7DEE8' para azul claro).
+    """
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    shd = OxmlElement('w:shd')
+    shd.set(qn('w:fill'), color_hex)
+    tcPr.append(shd)
+
+def set_row_background(row, color_hex):
+    for cell in row.cells:
+        set_cell_background(cell, color_hex)
 
 def pegar_feriados_mes(ano, mes, estado='AM'):
     print(f"DEBUG: Iniciando pegar_feriados_mes para ano={ano}, mes={mes}, estado='{estado}'") # DEBUG
@@ -380,6 +399,7 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados):
                 celulas_para_marcar = [2, 5, 8, 12]
                 if texto == "FERIADO":
                      celulas_para_marcar = [2, 5, 9] # Manteve a lógica original, mas verifique.
+                set_row_background(row, 'C5E0B4') # VERDE
 
                 for j in celulas_para_marcar:
                     if j < len(row.cells): # Verificação de segurança
