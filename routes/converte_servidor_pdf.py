@@ -32,6 +32,10 @@ def set_cell_background(cell, color_hex):
     shd = OxmlElement('w:shd')
     shd.set(qn('w:fill'), color_hex)
     tcPr.append(shd)
+
+def set_row_background(row, color_hex):
+    for cell in row.cells:
+        set_cell_background(cell, color_hex)
     
 def pegar_feriados_mes(ano, mes, estado='AM'):
     print(f"DEBUG: Iniciando pegar_feriados_mes para ano={ano}, mes={mes}, estado='{estado}'") # DEBUG
@@ -335,7 +339,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
             texto_status = "DOMINGO"
 
         if texto_status: # Escreve SÁBADO ou DOMINGO
-            set_cell_background(row, 'C5E0B4') # VERDE
+            set_row_background(row, 'C5E0B4') # VERDE
             for j in [2, 5, 9, 13]: # Seus índices de coluna originais
                 if j < len(row.cells):
                     cell = row.cells[j]
@@ -353,7 +357,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
 
         # Feriado (exceto se for sábado ou domingo) - sobrescreve células se for o caso
         if data_atual in feriados and dia_semana not in [5, 6]:
-            set_cell_background(row, 'C5E0B4') # VERDE
+            set_row_background(row, 'C5E0B4') # VERDE
             for j in [2, 5, 9, 13]:
                 if j < len(row.cells):
                     cell = row.cells[j]
@@ -377,7 +381,6 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
 
             if isinstance(ferias_inicio, date) and isinstance(ferias_final, date) and \
                (ferias_inicio <= data_atual <= ferias_final and dia_semana not in [5, 6]):
-                #set_cell_background(row, 'C5E0B4') # VERDE
                 for j in [2, 5, 9, 13]:
                     if j < len(row.cells):
                         cell = row.cells[j]
