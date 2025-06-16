@@ -18,9 +18,9 @@ def cadastrar_feriado_municipal():
     conexao = connect_mysql()
     cursor = conexao.cursor()
     cursor.execute(
-        "INSERT INTO feriados_municipais (estado, data, descricao, ponto_facultativo) VALUES (%s, %s, %s, %s)",
-        (estado, data_feriado, descricao, ponto_facultativo)
-    )
+    "INSERT INTO feriados_municipais (estado, data, descricao, ponto_facultativo) VALUES (%s, %s, %s, %s)",
+    (estado, data_feriado, descricao, ponto_facultativo)
+)
     conexao.commit()
     conexao.close()
     return jsonify({'mensagem': 'Feriado municipal cadastrado com sucesso!'}), 201

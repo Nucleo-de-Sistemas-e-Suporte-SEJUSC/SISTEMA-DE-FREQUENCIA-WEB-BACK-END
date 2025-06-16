@@ -18,7 +18,7 @@ def validate_date(field, value, error):
 schema = {
     "setor": {"type": "string", "required": True, "minlength": 3},
     "nome": {"type": "string", "required": True, "minlength": 3},
-    "matricula": {"type": "string", "required": False, "minlength": 3},
+    "matricula": {"type": "string", "required": False},
     "cargo": {"type": "string", "required": True, "minlength": 3},
     "funcao": {"type": "string", "required": False},
     "horario": {"type": "string", "required": True},
