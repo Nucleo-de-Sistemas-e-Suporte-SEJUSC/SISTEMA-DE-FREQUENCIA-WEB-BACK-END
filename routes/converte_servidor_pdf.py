@@ -38,69 +38,63 @@ def set_row_background(row, color_hex):
         set_cell_background(cell, color_hex)
     
 def pegar_feriados_mes(ano, mes, estado='AM'):
-    print(f"DEBUG: Iniciando pegar_feriados_mes para ano={ano}, mes={mes}, estado='{estado}'") # DEBUG
+    """
+    Busca feriados nacionais, estaduais e municipais, separando
+    feriados de pontos facultativos.
+    Retorna um dicionário com duas listas: {'feriados': [], 'pontos_facultativos': []}
+    """
+    print(f"DEBUG: Iniciando pegar_feriados_mes para ano={ano}, mes={mes}, estado='{estado}'")
 
-    br_feriados = holidays.Brazil(state=estado)
+    # 1. Busca feriados nacionais e estaduais da biblioteca 'holidays'
+    br_holidays = holidays.Brazil(state=estado)
     pascoa = easter(ano)
-    corpus_christi = pascoa + timedelta(days=60)
-    br_feriados[corpus_christi] = "Corpus Christi"
+    br_holidays[pascoa + timedelta(days=60)] = "Corpus Christi"
+    
+    # Filtra feriados da biblioteca para o mês e ano desejado
+    feriados_do_mes = [d.date() for d, name in br_holidays.items() if d.year == ano and d.month == mes]
+    pontos_facultativos_do_mes = []
 
+    # 2. Busca feriados e pontos facultativos municipais do banco de dados
     conexao = connect_mysql()
+    if not conexao:
+        print("DEBUG: Falha ao conectar ao banco de dados.")
+        return {'feriados': feriados_do_mes, 'pontos_facultativos': pontos_facultativos_do_mes}
+
     cursor = conexao.cursor(dictionary=True)
-    feriados_municipais_db = [] # Inicializa para o caso de falha na query
     try:
-        query_sql = "SELECT data FROM feriados_municipais WHERE estado = %s AND YEAR(data) = %s"
-        params = (estado, ano)
-        print(f"DEBUG: Executando SQL: {query_sql} com params {params}") # DEBUG
+        # Query para buscar data e a flag 'ponto_facultativo' do mês específico
+        query_sql = "SELECT data, ponto_facultativo FROM feriados_municipais WHERE estado = %s AND YEAR(data) = %s AND MONTH(data) = %s"
+        params = (estado, ano, mes)
         cursor.execute(query_sql, params)
-        feriados_municipais_db = cursor.fetchall()
-        print(f"DEBUG: Feriados municipais crus do DB: {feriados_municipais_db}") # DEBUG
-        if feriados_municipais_db:
-            # Itera sobre uma cópia ou acessa diretamente, mas vamos ver o tipo do primeiro, se existir
-            print(f"DEBUG: Tipo do valor 'data' do primeiro feriado do DB (se existir): {type(feriados_municipais_db[0]['data'])}") # DEBUG
+        datas_municipais_db = cursor.fetchall()
+        print(f"DEBUG: Datas municipais do DB: {datas_municipais_db}")
+
+        for item in datas_municipais_db:
+            data_db = item['data']
+            # Garante que estamos trabalhando com objetos 'date'
+            if isinstance(data_db, datetime):
+                data_db = data_db.date()
+
+            # Separa em listas diferentes com base na flag 'ponto_facultativo'
+            if item['ponto_facultativo']:  # Se a flag for 1/True
+                if data_db not in pontos_facultativos_do_mes:
+                    pontos_facultativos_do_mes.append(data_db)
+            else:  # Se a flag for 0/False/NULL
+                if data_db not in feriados_do_mes:
+                    feriados_do_mes.append(data_db)
+
     except Exception as e:
-        print(f"DEBUG: Erro ao buscar feriados municipais do DB: {e}") #DEBUG
+        print(f"DEBUG: Erro ao buscar datas municipais do DB: {e}")
     finally:
-        if conexao.is_connected(): # Verifica se a conexão está aberta antes de fechar
-            cursor.close() # Fecha o cursor primeiro
+        if conexao.is_connected():
+            cursor.close()
             conexao.close()
-            print("DEBUG: Conexão com MySQL fechada.") # DEBUG
-        else:
-            print("DEBUG: Conexão com MySQL já estava fechada ou não foi estabelecida.") #DEBUG
 
+    print(f"DEBUG: Feriados retornados: {feriados_do_mes}")
+    print(f"DEBUG: Pontos Facultativos retornados: {pontos_facultativos_do_mes}")
+    
+    return {'feriados': feriados_do_mes, 'pontos_facultativos': pontos_facultativos_do_mes}
 
-    for feriado_row in feriados_municipais_db:
-        data_db = feriado_row['data']
-        print(f"DEBUG: Processando feriado_row['data']: {data_db} (Tipo: {type(data_db)})") # DEBUG
-        
-        data_feriado_obj = None
-        if data_db is None:
-            print(f"DEBUG: data_db é None. Pulando.") #DEBUG
-            continue
-
-        if hasattr(data_db, 'date'):  # Verifica se é um objeto datetime.datetime
-            data_feriado_obj = data_db.date()
-            print(f"DEBUG: Convertido de datetime.datetime para date: {data_feriado_obj}") # DEBUG
-        elif isinstance(data_db, date):  # Verifica se já é um objeto datetime.date
-            data_feriado_obj = data_db
-            print(f"DEBUG: Já é um objeto date: {data_feriado_obj}") # DEBUG
-        else:
-            # Caso seja uma string ou outro tipo, tenta converter
-            try:
-                data_feriado_obj = date.fromisoformat(str(data_db))
-                print(f"DEBUG: Convertido de string/outro para date: {data_feriado_obj}") # DEBUG
-            except ValueError:
-                print(f"DEBUG: Alerta: Formato de data inválido '{data_db}' não pôde ser convertido.") # DEBUG
-                continue # Pula para o próximo feriado
-
-        if data_feriado_obj:
-            br_feriados[data_feriado_obj] = "Feriado Municipal"
-            print(f"DEBUG: Adicionado ao br_feriados: {data_feriado_obj}") # DEBUG
-
-    print(f"DEBUG: Conteúdo de br_feriados ANTES de filtrar por mês: {br_feriados.items()}") # DEBUG
-    feriados_mes = [d for d in br_feriados if d.month == mes]
-    print(f"DEBUG: Feriados filtrados para o mês {mes}: {feriados_mes}") # DEBUG
-    return feriados_mes
 
 def limpa_nome(nome):
     return re.sub(r'[^\w\s-]', '', nome).strip().replace(' ', '_')
@@ -191,11 +185,13 @@ def converte_servidor_pdf():
     
         for funcionario in funcionarios:
             estado_funcionarios = funcionario.get('estado', 'AM')
-            feriados_do_mes = pegar_feriados_mes(ano, mes_numerico,estado=estado_funcionarios)
+            datas_especiais = pegar_feriados_mes(ano, mes_numerico, estado=estado_funcionarios)
+            feriados_do_mes = datas_especiais['feriados']
+            pontos_facultativos_do_mes = datas_especiais['pontos_facultativos']
             template_path = 'FREQUÊNCIA_MENSAL.docx'
             doc = Document(template_path)
 
-            cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario, feriados_do_mes)
+            cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario, feriados_do_mes,pontos_facultativos_do_mes)
             # Formatar horário
             troca_de_dados = {
             "CAMPO SETOR": funcionario['setor'],
@@ -253,7 +249,7 @@ def converte_servidor_pdf():
             conexao.close()
         return jsonify({'erro': f'Erro: {str(exception)}'}), 500
 
-def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario, feriados):
+def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario, feriados,pontos_facultativos):
     linha_inicial = 8
 
     if not doc.tables:
@@ -305,7 +301,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
 
     # 3. Preencher as linhas de dados (seu código original a partir daqui)
     # Defina pontos_facultativos antes do loop, por exemplo, como uma lista vazia ou conforme sua lógica
-    pontos_facultativos = []  # Substitua por sua lógica para obter pontos facultativos, se necessário
+    
 
     for i in range(quantidade_dias_no_mes):
         dia = i + 1
