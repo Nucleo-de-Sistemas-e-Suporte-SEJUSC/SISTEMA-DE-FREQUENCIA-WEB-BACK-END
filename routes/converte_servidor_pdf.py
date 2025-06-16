@@ -335,12 +335,12 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
             texto_status = "DOMINGO"
 
         if texto_status: # Escreve SÁBADO ou DOMINGO
+            set_cell_background(row, 'C5E0B4') # VERDE
             for j in [2, 5, 9, 13]: # Seus índices de coluna originais
                 if j < len(row.cells):
                     cell = row.cells[j]
                     cell.text = texto_status # Define o texto, limpando parágrafos anteriores
                     # Reaplicar formatação após cell.text
-                    set_cell_background(cell, 'B7DEE8') # Azul claro
                     for paragraph in cell.paragraphs:
                         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                         for run in paragraph.runs: # O texto agora está em um ou mais runs
@@ -353,11 +353,11 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
 
         # Feriado (exceto se for sábado ou domingo) - sobrescreve células se for o caso
         if data_atual in feriados and dia_semana not in [5, 6]:
+            set_cell_background(row, 'C5E0B4') # VERDE
             for j in [2, 5, 9, 13]:
                 if j < len(row.cells):
                     cell = row.cells[j]
                     cell.text = "FERIADO"
-                    set_cell_background(cell, 'B7DEE8') # Vermelho claro
                     for paragraph in cell.paragraphs:
                         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                         for run in paragraph.runs:
@@ -377,6 +377,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
 
             if isinstance(ferias_inicio, date) and isinstance(ferias_final, date) and \
                (ferias_inicio <= data_atual <= ferias_final and dia_semana not in [5, 6]):
+                set_cell_background(row, 'C5E0B4') # VERDE
                 for j in [2, 5, 9, 13]:
                     if j < len(row.cells):
                         cell = row.cells[j]
