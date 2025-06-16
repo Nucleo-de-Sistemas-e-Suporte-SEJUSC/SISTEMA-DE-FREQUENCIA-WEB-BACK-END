@@ -304,6 +304,9 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
         print(f"INFO: Linha faltante adicionada. Total de linhas agora: {len(table.rows)}")
 
     # 3. Preencher as linhas de dados (seu código original a partir daqui)
+    # Defina pontos_facultativos antes do loop, por exemplo, como uma lista vazia ou conforme sua lógica
+    pontos_facultativos = []  # Substitua por sua lógica para obter pontos facultativos, se necessário
+
     for i in range(quantidade_dias_no_mes):
         dia = i + 1
         # Agora é seguro acessar table.rows[linha_inicial + i]
@@ -354,14 +357,32 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                 else:
                     print(f"AVISO: Índice de coluna {j} para S/D fora dos limites.")
 
+        # Corrigido: bloco corretamente indentado e pontos_facultativos definido
+        if data_atual in pontos_facultativos and dia_semana not in [5, 6]:
+            set_row_background(row, 'C5E0B4')  # Verde
+            for j in [2, 5, 9, 13]:
+                if j < len(row.cells):
+                    cell = row.cells[j]
+                    cell.text = "PONTO FACULTATIVO"
+                    for paragraph in cell.paragraphs:
+                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                        for run in paragraph.runs:
+                            run.font.bold = True
+                            run.font.name = "Calibri"
+                            run.font.size = Pt(7)
+                else:
+                    print(f"AVISO: Índice de coluna {j} para PONTO FACULTATIVO fora dos limites.")
 
-        # Feriado (exceto se for sábado ou domingo) - sobrescreve células se for o caso
+
+
+        # Fer (exceto se for sábado ou domingo) - sobrescreve células se for o caso
         if data_atual in feriados and dia_semana not in [5, 6]:
             set_row_background(row, 'C5E0B4') # VERDE
             for j in [2, 5, 9, 13]:
                 if j < len(row.cells):
                     cell = row.cells[j]
                     cell.text = "FERIADO"
+
                     for paragraph in cell.paragraphs:
                         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                         for run in paragraph.runs:

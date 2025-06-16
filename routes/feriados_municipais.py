@@ -10,6 +10,7 @@ def cadastrar_feriado_municipal():
     estado = body.get('estado')
     data_feriado = body.get('data')  # formato: 'YYYY-MM-DD'
     descricao = body.get('descricao', 'Feriado Municipal')
+    ponto_facultativo = body.get('ponto_facultativo')  # formato: 'YYYY-MM-DD' ou None
 
     if not estado or not data_feriado:
         return jsonify({'erro': 'Estado e data são obrigatórios'}), 400
@@ -17,8 +18,8 @@ def cadastrar_feriado_municipal():
     conexao = connect_mysql()
     cursor = conexao.cursor()
     cursor.execute(
-        "INSERT INTO feriados_municipais (estado, data, descricao) VALUES (%s, %s, %s)",
-        (estado, data_feriado, descricao)
+        "INSERT INTO feriados_municipais (estado, data, descricao, ponto_facultativo) VALUES (%s, %s, %s, %s)",
+        (estado, data_feriado, descricao, ponto_facultativo)
     )
     conexao.commit()
     conexao.close()
