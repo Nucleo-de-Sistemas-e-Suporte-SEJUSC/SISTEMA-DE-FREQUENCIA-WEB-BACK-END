@@ -15,9 +15,24 @@ import zipfile
 import re
 from datetime import date
 from dateutil.easter import easter
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 
 bp_converte_servidor_pdf = Blueprint('bp_converte_servidor_pdf', __name__)
+
+
+
+def set_cell_background(cell, color_hex):
+    """
+    Define a cor de fundo da célula (color_hex no formato 'RRGGBB', ex: 'B7DEE8' para azul claro).
+    """
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    shd = OxmlElement('w:shd')
+    shd.set(qn('w:fill'), color_hex)
+    tcPr.append(shd)
+    
 def pegar_feriados_mes(ano, mes, estado='AM'):
     print(f"DEBUG: Iniciando pegar_feriados_mes para ano={ano}, mes={mes}, estado='{estado}'") # DEBUG
 
@@ -325,6 +340,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                     cell = row.cells[j]
                     cell.text = texto_status # Define o texto, limpando parágrafos anteriores
                     # Reaplicar formatação após cell.text
+                    set_cell_background(cell, 'B7DEE8') # Azul claro
                     for paragraph in cell.paragraphs:
                         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                         for run in paragraph.runs: # O texto agora está em um ou mais runs
@@ -341,6 +357,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                 if j < len(row.cells):
                     cell = row.cells[j]
                     cell.text = "FERIADO"
+                    set_cell_background(cell, 'B7DEE8') # Vermelho claro
                     for paragraph in cell.paragraphs:
                         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                         for run in paragraph.runs:
