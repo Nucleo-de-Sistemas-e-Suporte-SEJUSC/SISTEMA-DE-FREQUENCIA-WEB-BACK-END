@@ -10,14 +10,12 @@ from docx.enum.table import WD_ROW_HEIGHT_RULE
 import os
 import zipfile
 from datetime import datetime, timedelta, date, time
-# Imports necessários para pegar_feriados_mes
 from dateutil.easter import easter
 import holidays
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 bp_converte_setor_estagiario_pdf = Blueprint('bp_converte_setor_estagiario_pdf', __name__)
-
 
 def set_cell_background(cell, color_hex):
     tc = cell._tc
@@ -30,18 +28,15 @@ def set_row_background(row, color_hex):
     for cell in row.cells:
         set_cell_background(cell, color_hex)
 
-
 def pegar_feriados_mes(ano, mes, estado='AM'):
     br_feriados = holidays.Brazil(state=estado)
     pascoa = easter(ano)
     corpus_christi = pascoa + timedelta(days=60)
     br_feriados[corpus_christi] = "Corpus Christi"
-
     conexao = connect_mysql()
     cursor = conexao.cursor(dictionary=True)
     feriados_municipais_db = []
     try:
-        # A query agora busca a coluna ponto_facultativo
         query_sql = "SELECT data, ponto_facultativo FROM feriados_municipais WHERE estado = %s AND YEAR(data) = %s"
         params = (estado, ano)
         cursor.execute(query_sql, params)
@@ -50,9 +45,7 @@ def pegar_feriados_mes(ano, mes, estado='AM'):
         if conexao.is_connected():
             cursor.close()
             conexao.close()
-
     pontos_facultativos = []
-    # feriados_normais = [] # Não é mais necessário
     for feriado_row in feriados_municipais_db:
         data_db = feriado_row['data']
         ponto_facultativo = feriado_row.get('ponto_facultativo', 0)
@@ -71,14 +64,9 @@ def pegar_feriados_mes(ano, mes, estado='AM'):
         if data_feriado_obj:
             if ponto_facultativo:
                 pontos_facultativos.append(data_feriado_obj)
-            # else: # O feriado normal já é adicionado abaixo
-            #     feriados_normais.append(data_feriado_obj)
             br_feriados[data_feriado_obj] = "Feriado Municipal"
-            
     feriados_mes = [d for d in br_feriados if d.month == mes]
     pontos_facultativos_mes = [d for d in pontos_facultativos if d.month == mes]
-    
-    # Retorna as duas listas
     return feriados_mes, pontos_facultativos_mes
 
 def formatar_horario_para_hh_mm_v2(valor_horario):
@@ -97,7 +85,6 @@ def formatar_horario_para_hh_mm_v2(valor_horario):
         except ValueError: return valor_horario
     return str(valor_horario)
 
-
 @bp_converte_setor_estagiario_pdf.route('/api/setores/estagiar/pdf', methods=['POST'])
 def converte_setores_estagiarios_pdf():
     conexao_principal = None
@@ -114,36 +101,25 @@ def converte_setores_estagiarios_pdf():
         mes_numerico = data_ano_mes_atual['mes_numerico']
         ano = data_ano_mes_atual['ano']
 
-        # --- INÍCIO DO BLOCO CORRIGIDO ---
-
-        # CORREÇÃO: A linha abaixo define a variável que estava faltando.
+        # --- LÓGICA DE BUSCA DE FERIADOS LIMPA E CORRIGIDA ---
         estado_para_feriados = 'AM'
-
-        # Desempacota o retorno da função em duas variáveis para o mês corrente
         feriados_corrente, pontos_fac_corrente = pegar_feriados_mes(ano, mes_numerico, estado=estado_para_feriados)
-
-        # Calcula o próximo mês
         ano_proximo = ano
         mes_proximo = mes_numerico + 1
         if mes_proximo > 12:
             mes_proximo = 1
             ano_proximo += 1
-        
-        # Desempacota o retorno da função para o próximo mês
         feriados_proximo, pontos_fac_proximo = pegar_feriados_mes(ano_proximo, mes_proximo, estado=estado_para_feriados)
-
-        # Combina as listas do mesmo tipo e remove duplicatas com set()
+        
         todos_feriados_do_periodo = list(set(feriados_corrente + feriados_proximo))
         todos_pontos_facultativos_do_periodo = list(set(pontos_fac_corrente + pontos_fac_proximo))
-        
-        # --- FIM DO BLOCO CORRIGIDO ---
+        # --- FIM DA LÓGICA DE BUSCA DE FERIADOS ---
 
         arquivos_zip_dos_setores = []
 
         for setor_nome in setores_nomes:
             conexao_principal = connect_mysql()
             cursor = conexao_principal.cursor(dictionary=True)
-
             query = "SELECT * FROM estagiarios WHERE setor = %s"
             cursor.execute(query, (setor_nome,))
             estagiarios = cursor.fetchall()
@@ -164,12 +140,12 @@ def converte_setores_estagiarios_pdf():
                 template_path = 'FREQUÊNCIA ESTAGIÁRIOS - MODELO.docx'
                 doc = Document(template_path)
                 
-                # Passa as duas listas para a função de criação de células
+                # Passando as duas listas corretamente
                 cria_dias_da_celula(doc, ano, mes_numerico, estagiario, todos_feriados_do_periodo, todos_pontos_facultativos_do_periodo)
 
                 troca_de_dados = {
                     "CAMPO SETOR": estagiario.get('setor', ''),
-                    "CAMPO MÊS": mes_por_extenso,
+                    "CAMPO MES": mes_por_extenso,
                     "CAMPO NOME": estagiario.get('nome', ''),
                     "CAMPO ANO": str(ano),
                     "CAMPO HORARIO": str(estagiario.get('horario', '')),
@@ -187,10 +163,8 @@ def converte_setores_estagiarios_pdf():
                 doc.save(docx_path)
                 convert_to_pdf(docx_path, pdf_path)
                 arquivos_pdf_gerados_neste_setor.append(pdf_path)
-                cursor.execute(
-                    "INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)",
-                    (estagiario['id'], pdf_path)
-                )
+                
+                cursor.execute("INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)", (estagiario['id'], pdf_path))
 
             if arquivos_pdf_gerados_neste_setor:
                 zip_path_setor = f"setor/estagiarios/{setor_limpo}/frequencias_estagiarios_{setor_limpo}_{mes_por_extenso}.zip"
@@ -198,10 +172,8 @@ def converte_setores_estagiarios_pdf():
                     for pdf in arquivos_pdf_gerados_neste_setor:
                         zipf.write(pdf, os.path.basename(pdf))
                 arquivos_zip_dos_setores.append(zip_path_setor)
-                cursor.execute(
-                    "INSERT INTO arquivos_zip (setor, mes, caminho_zip, tipo) VALUES (%s, %s, %s, %s)",
-                    (setor_nome, mes_por_extenso, zip_path_setor, 'estagiarios_setor')
-                )
+                cursor.execute("INSERT INTO arquivos_zip (setor, mes, caminho_zip, tipo) VALUES (%s, %s, %s, %s)", (setor_nome, mes_por_extenso, zip_path_setor, 'estagiarios_setor'))
+            
             conexao_principal.commit()
             if conexao_principal and conexao_principal.is_connected():
                 cursor.close()
@@ -215,18 +187,13 @@ def converte_setores_estagiarios_pdf():
             with zipfile.ZipFile(zip_final_path, 'w') as zipf:
                 for zip_file_setor in arquivos_zip_dos_setores:
                     zipf.write(zip_file_setor, os.path.basename(zip_file_setor))
-            
             conexao_principal = connect_mysql()
             cursor = conexao_principal.cursor(dictionary=True)
-            cursor.execute(
-                "INSERT INTO arquivos_zip (setor, mes, ano, caminho_zip, tipo) VALUES (%s, %s, %s, %s, %s)",
-                ('multiestagiarios', mes_por_extenso, str(ano), zip_final_path, 'multiestagiarios_geral')
-            )
+            cursor.execute("INSERT INTO arquivos_zip (setor, mes, ano, caminho_zip, tipo) VALUES (%s, %s, %s, %s, %s)", ('multiestagiarios', mes_por_extenso, str(ano), zip_final_path, 'multiestagiarios_geral'))
             conexao_principal.commit()
-            if conexao_principal and conexao_principal.is_connected():
+            if conexao_principal.is_connected():
                 cursor.close()
                 conexao_principal.close()
-
             return send_file(zip_final_path, mimetype='application/zip', as_attachment=True, download_name=os.path.basename(zip_final_path))
         elif arquivos_zip_dos_setores:
             return send_file(arquivos_zip_dos_setores[0], mimetype='application/zip', as_attachment=True, download_name=os.path.basename(arquivos_zip_dos_setores[0]))
@@ -240,7 +207,6 @@ def converte_setores_estagiarios_pdf():
                 cursor.close()
             conexao_principal.close()
         return jsonify({'erro': f'Erro ao processar setores de estagiários: {str(exception)}'}), 500
-# Modificado para aceitar 'feriados' e aplicar a lógica
 
 def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados, pontos_facultativos):
     """
@@ -272,7 +238,7 @@ def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados, pontos_
         
     table = doc.tables[0]
     
-    # 1. Ajustar o número de linhas na tabela para o período
+    # Ajusta o número de linhas na tabela para o período
     dias_periodo = calcula_periodo_21_a_20(ano_param, mes_param)
     target_total_rows = linha_inicial + len(dias_periodo)
 
@@ -284,19 +250,25 @@ def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados, pontos_
 
     while len(table.rows) < target_total_rows:
         new_row = table.add_row()
-        new_row.height = Cm(0.55)
+        # ALTURA DA LINHA AJUSTADA AQUI
+        new_row.height = Cm(0.5) 
         new_row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
         for cell in new_row.cells:
             p = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
             p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-    # 2. Preencher os dados de cada dia do período
+    # Preenche os dados de cada dia do período
     for i, dia_info in enumerate(dias_periodo):
         dia = dia_info["dia"]
         mes_iter = dia_info["mes"]
         ano_dia = dia_info["ano"]
         
         row = table.rows[linha_inicial + i]
+        
+        # APLICA A ALTURA AJUSTADA TAMBÉM NAS LINHAS EXISTENTES PARA GARANTIR CONSISTÊNCIA
+        row.height = Cm(0.5)
+        row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+        
         current_date_obj = date(ano_dia, mes_iter, dia)
         dia_semana = pega_final_de_semana(ano_dia, mes_iter, dia)
         
@@ -312,18 +284,15 @@ def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados, pontos_
         dia_run.font.name = "Calibri"
         dia_run.font.size = Pt(8)
 
-        # Lógica para definir o status do dia (com ordem de prioridade)
+        # Lógica para definir o status do dia
         text_to_write = None
         
-        # Prioridade 1: Fim de semana
         if dia_semana == 5:
             text_to_write = "SÁBADO"
         elif dia_semana == 6:
             text_to_write = "DOMINGO"
 
-        # Se for um dia de semana, verifica outros status
         if text_to_write is None:
-            # Prioridade 2: Férias
             if estagiario.get('feriasinicio') and estagiario.get('feriasfinal'):
                 ferias_inicio_raw = estagiario['feriasinicio']
                 ferias_final_raw = estagiario['feriasfinal']
@@ -332,19 +301,15 @@ def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados, pontos_
                 if isinstance(ferias_inicio, date) and isinstance(ferias_final, date) and (ferias_inicio <= current_date_obj <= ferias_final):
                     text_to_write = "FÉRIAS"
             
-            # Prioridade 3: Ponto Facultativo
             if text_to_write is None and current_date_obj in pontos_facultativos:
                 text_to_write = "PONTO FACULTATIVO"
             
-            # Prioridade 4: Feriado
             elif text_to_write is None and current_date_obj in feriados:
                 text_to_write = "FERIADO"
 
-        # Se algum status foi definido, escreve nas colunas apropriadas
+        # Se algum status foi definido, escreve nas colunas
         if text_to_write:
-            set_row_background(row, 'C5E0B4')  # Pinta a linha de verde claro
-            
-            # Colunas para Entrada Manhã, Saída Manhã, Entrada Tarde, Saída Tarde
+            set_row_background(row, 'C5E0B4')
             column_indices_to_fill = [2, 5, 9, 13]
 
             for j_idx in column_indices_to_fill:
@@ -354,5 +319,5 @@ def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados, pontos_
                     run_to_mark = p_to_mark.add_run(text_to_write)
                     run_to_mark.font.bold = True
                     run_to_mark.font.name = "Calibri"
-                    run_to_mark.font.size = Pt(6)  # Tamanho ajustado para caber bem
+                    run_to_mark.font.size = Pt(6)
                     p_to_mark.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
