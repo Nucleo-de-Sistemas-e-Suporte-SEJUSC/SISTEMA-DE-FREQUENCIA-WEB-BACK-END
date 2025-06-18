@@ -14,43 +14,50 @@ from datetime import datetime, date, time, timedelta
 # Imports necessários para pegar_feriados_mes
 from dateutil.easter import easter
 import holidays
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 # import uuid # uuid não está sendo usado
 
 bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
 
-def pegar_feriados_mes(ano, mes, estado='AM'):
-    print(f"DEBUG setor_funcionarios: Iniciando pegar_feriados_mes para ano={ano}, mes={mes}, estado='{estado}'")
+# Funções a serem adicionadas
+def set_cell_background(cell, color_hex):
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    shd = OxmlElement('w:shd')
+    shd.set(qn('w:fill'), color_hex)
+    tcPr.append(shd)
 
+def set_row_background(row, color_hex):
+    for cell in row.cells:
+        set_cell_background(cell, color_hex)
+
+
+def pegar_feriados_mes(ano, mes, estado='AM'):
     br_feriados = holidays.Brazil(state=estado)
     pascoa = easter(ano)
     corpus_christi = pascoa + timedelta(days=60)
     br_feriados[corpus_christi] = "Corpus Christi"
 
-    conexao_feriado = None
+    conexao = connect_mysql()
+    cursor = conexao.cursor(dictionary=True)
+    feriados_municipais_db = []
     try:
-        conexao_feriado = connect_mysql()
-        cursor_feriado = conexao_feriado.cursor(dictionary=True)
-        feriados_municipais_db = []
-        query_sql = "SELECT data FROM feriados_municipais WHERE estado = %s AND YEAR(data) = %s"
+        # A query agora busca a coluna ponto_facultativo
+        query_sql = "SELECT data, ponto_facultativo FROM feriados_municipais WHERE estado = %s AND YEAR(data) = %s"
         params = (estado, ano)
-        print(f"DEBUG setor_funcionarios: Executando SQL: {query_sql} com params {params}")
-        cursor_feriado.execute(query_sql, params)
-        feriados_municipais_db = cursor_feriado.fetchall()
-        print(f"DEBUG setor_funcionarios: Feriados municipais crus do DB: {feriados_municipais_db}")
-        if feriados_municipais_db and feriados_municipais_db[0].get('data') is not None:
-            print(f"DEBUG setor_funcionarios: Tipo do valor 'data' do primeiro feriado do DB (se existir): {type(feriados_municipais_db[0]['data'])}")
-        cursor_feriado.close()
-    except Exception as e:
-        print(f"DEBUG setor_funcionarios: Erro ao buscar feriados municipais do DB: {e}")
+        cursor.execute(query_sql, params)
+        feriados_municipais_db = cursor.fetchall()
     finally:
-        if conexao_feriado and conexao_feriado.is_connected():
-            conexao_feriado.close()
-            print("DEBUG setor_funcionarios: Conexão de feriado com MySQL fechada.")
-        else:
-            print("DEBUG setor_funcionarios: Conexão de feriado com MySQL já estava fechada ou não foi estabelecida.")
-            
+        if conexao.is_connected():
+            cursor.close()
+            conexao.close()
+
+    pontos_facultativos = []
+    # feriados_normais = [] # Não é mais necessário
     for feriado_row in feriados_municipais_db:
         data_db = feriado_row['data']
+        ponto_facultativo = feriado_row.get('ponto_facultativo', 0)
         data_feriado_obj = None
         if data_db is None:
             continue
@@ -62,15 +69,19 @@ def pegar_feriados_mes(ano, mes, estado='AM'):
             try:
                 data_feriado_obj = date.fromisoformat(str(data_db))
             except ValueError:
-                print(f"DEBUG setor_funcionarios: Alerta: Formato de data inválido '{data_db}' não pôde ser convertido.")
                 continue
         if data_feriado_obj:
+            if ponto_facultativo:
+                pontos_facultativos.append(data_feriado_obj)
+            # else: # O feriado normal já é adicionado abaixo
+            #     feriados_normais.append(data_feriado_obj)
             br_feriados[data_feriado_obj] = "Feriado Municipal"
-    # print(f"DEBUG setor_funcionarios: Conteúdo de br_feriados ANTES de filtrar por mês: {br_feriados.items()}")
-    feriados_mes_filtrados = [d for d in br_feriados if d.month == mes] # Renomeada a variável de retorno para clareza
-    print(f"DEBUG setor_funcionarios: Feriados filtrados para o mês {mes}: {feriados_mes_filtrados}")
-    return feriados_mes_filtrados
-# FIM DE: Função pegar_feriados_mes
+            
+    feriados_mes = [d for d in br_feriados if d.month == mes]
+    pontos_facultativos_mes = [d for d in pontos_facultativos if d.month == mes]
+    
+    # Retorna as duas listas
+    return feriados_mes, pontos_facultativos_mes
 
 
 def formatar_horario_para_hh_mm_v2(valor_horario):
@@ -91,7 +102,7 @@ def formatar_horario_para_hh_mm_v2(valor_horario):
 
 @bp_converte_setor_pdf.route('/api/setores/pdf', methods=['POST'])
 def converte_setores_pdf():
-    conexao_principal = None # Para ser usado no try/finally da rota
+    conexao_principal = None
     try:
         body = request.json or {}
         setores = body.get('setores')
@@ -100,17 +111,16 @@ def converte_setores_pdf():
         if not setores or not isinstance(setores, list):
             return jsonify({'erro': 'Nenhum setor selecionado ou formato inválido'}), 400
 
-        arquivos_zip_gerados_todos_setores = [] # Renomeado para clareza
-        mes_por_extenso_geral = data_atual(mes_body)['mes'] # Pegar uma vez se o mês é o mesmo para todos
+        arquivos_zip_gerados_todos_setores = []
+        mes_por_extenso_geral = data_atual(mes_body)['mes']
 
         for setor_nome in setores:
-            # Os dados de data/mês/ano são por setor aqui, caso mes_body pudesse variar (embora improvável)
             data_ano_mes_atual = data_atual(mes_body)
             mes_numerico = data_ano_mes_atual['mes_numerico']
             ano = data_ano_mes_atual['ano']
             quantidade_dias_no_mes = pega_quantidade_dias_mes(ano, mes_numerico) 
 
-            conexao_principal = connect_mysql() # Conexão por setor
+            conexao_principal = connect_mysql()
             cursor = conexao_principal.cursor(dictionary=True)
 
             query_funcionarios = "SELECT * FROM funcionarios WHERE setor = %s"
@@ -124,25 +134,28 @@ def converte_setores_pdf():
                 print(f"Nenhum funcionário encontrado no setor {setor_nome}, pulando.")
                 continue
 
-            arquivos_pdf_gerados_neste_setor = [] # Renomeado para clareza
+            arquivos_pdf_gerados_neste_setor = []
             setor_limpo = setor_nome.strip().replace('/', '_')
 
             for funcionario in funcionarios:
-                # --- Busca de feriados por funcionário (considerando estado do funcionário) ---
-                estado_funcionario = funcionario.get('estado', 'AM') # Pega o estado do funcionário, default 'AM'
-                feriados_do_mes_funcionario = pegar_feriados_mes(ano, mes_numerico, estado=estado_funcionario)
-                print(f"DEBUG ROTA setor_funcionarios: Feriados para {funcionario.get('nome')} no estado {estado_funcionario}: {feriados_do_mes_funcionario}")
-                # --- FIM da busca de feriados ---
+                # --- INÍCIO DO BLOCO CORRIGIDO ---
 
+                # Busca de feriados por funcionário
+                estado_funcionario = funcionario.get('estado', 'AM')
+                feriados_do_mes, pontos_facultativos_do_mes = pegar_feriados_mes(ano, mes_numerico, estado=estado_funcionario)
+                
+                # CORREÇÃO 1: A linha de print foi atualizada para usar as variáveis corretas
+                print(f"DEBUG: Para {funcionario.get('nome')}, Feriados: {feriados_do_mes}, Pontos Facultativos: {pontos_facultativos_do_mes}")
+
+                # CORREÇÃO 2: Todo o bloco abaixo foi indentado para ficar DENTRO do loop 'for funcionario in funcionarios:'
                 template_path = 'FREQUÊNCIA_MENSAL.docx'
                 doc = Document(template_path)
                 
-                # Passa a lista de feriados específica do funcionário
-                cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario, feriados_do_mes_funcionario)
+                cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario, feriados_do_mes, pontos_facultativos_do_mes)
 
                 troca_de_dados = {
                     "CAMPO SETOR": funcionario.get('setor', ''),
-                    "CAMPO MÊS": mes_por_extenso_geral, # Usar o geral
+                    "CAMPO MÊS": mes_por_extenso_geral,
                     "CAMPO NOME": funcionario.get('nome', ''),
                     "CAMPO ANO": str(ano),
                     "CAMPO HORARIO": str(funcionario.get('horario', '')),
@@ -169,15 +182,17 @@ def converte_setores_pdf():
                     (funcionario['id'], pdf_path)
                 )
 
-            if arquivos_pdf_gerados_neste_setor: # Só cria ZIP se houver PDFs
-                zip_path_setor = f"setor/{setor_limpo}/frequencias_funcionarios_{setor_limpo}_{mes_por_extenso_geral}.zip" # Nome mais específico
+                # --- FIM DO BLOCO CORRIGIDO (QUE AGORA ESTÁ DENTRO DO LOOP) ---
+
+            if arquivos_pdf_gerados_neste_setor:
+                zip_path_setor = f"setor/{setor_limpo}/frequencias_funcionarios_{setor_limpo}_{mes_por_extenso_geral}.zip"
                 with zipfile.ZipFile(zip_path_setor, 'w') as zipf:
                     for pdf in arquivos_pdf_gerados_neste_setor:
                         zipf.write(pdf, os.path.basename(pdf))
                 arquivos_zip_gerados_todos_setores.append(zip_path_setor)
                 cursor.execute(
                     "INSERT INTO arquivos_zip (setor, mes, caminho_zip, tipo) VALUES (%s, %s, %s, %s)",
-                    (setor_nome, mes_por_extenso_geral, zip_path_setor, 'funcionarios_setor') # tipo ajustado
+                    (setor_nome, mes_por_extenso_geral, zip_path_setor, 'funcionarios_setor')
                 )
             
             conexao_principal.commit()
@@ -185,20 +200,21 @@ def converte_setores_pdf():
                 cursor.close()
                 conexao_principal.close()
 
+        # ... (O restante da função para criar o ZIP final continua igual)
         if not arquivos_zip_gerados_todos_setores:
-            return jsonify({'message': 'Nenhum arquivo ZIP de funcionários foi gerado (sem funcionários nos setores ou sem PDFs).'}), 200
+            return jsonify({'message': 'Nenhum arquivo ZIP de funcionários foi gerado.'}), 200
 
         if len(arquivos_zip_gerados_todos_setores) > 1:
-            zip_final_path = f"setor/frequencias_multissetores_funcionarios_{mes_body.replace('/','-')}_{ano}.zip" # Nome com ano e tipo
+            zip_final_path = f"setor/frequencias_multissetores_funcionarios_{mes_body.replace('/','-')}_{ano}.zip"
             with zipfile.ZipFile(zip_final_path, 'w') as zipf:
                 for zip_file in arquivos_zip_gerados_todos_setores:
                     zipf.write(zip_file, os.path.basename(zip_file))
             
-            conexao_principal = connect_mysql() # Nova conexão para salvar o ZIP agregado
+            conexao_principal = connect_mysql()
             cursor = conexao_principal.cursor(dictionary=True)
             cursor.execute(
-                "INSERT INTO arquivos_zip (setor, mes, ano, caminho_zip, tipo) VALUES (%s, %s, %s, %s, %s)", # Adicionado ano
-                ('multissetores_funcionarios', mes_por_extenso_geral, str(ano), zip_final_path, 'multissetores_funcionarios_geral') # tipo ajustado
+                "INSERT INTO arquivos_zip (setor, mes, ano, caminho_zip, tipo) VALUES (%s, %s, %s, %s, %s)",
+                ('multissetores_funcionarios', mes_por_extenso_geral, str(ano), zip_final_path, 'multissetores_funcionarios_geral')
             )
             conexao_principal.commit()
             if conexao_principal and conexao_principal.is_connected():
@@ -212,117 +228,106 @@ def converte_setores_pdf():
 
     except Exception as exception:
         print(f"ERRO ROTA SETOR FUNCIONARIOS: {str(exception)}")
-        # import traceback; traceback.print_exc();
         if conexao_principal and conexao_principal.is_connected():
-            cursor.close() # Garante que o cursor seja fechado se foi aberto
+            if 'cursor' in locals() and cursor:
+                cursor.close()
             conexao_principal.close()
         return jsonify({'erro': f'Erro ao processar setores: {str(exception)}'}), 500
 
-
 # Modificado para aceitar 'feriados' e aplicar a lógica
-def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario, feriados):
+
+def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario, feriados, pontos_facultativos):
+    """
+    Preenche a tabela de frequência mensal no documento Word, ajustando o número de linhas
+    e preenchendo os dias com os respectivos status (Sábado, Domingo, Feriado, Ponto Facultativo, Férias).
+    """
     linha_inicial = 8
 
     if not doc.tables:
-        print("AVISO: Nenhum tabela encontrada no documento.")
+        print("AVISO: Nenhuma tabela encontrada no documento.")
         return
     
-    table = doc.tables[0] # Assume-se que a primeira tabela é a de frequência
+    table = doc.tables[0]
 
-    # 1. Aplicar formatação base em todas as linhas existentes (como no seu código original)
-    # Esta formatação pode ser muito genérica; idealmente, o template já teria os estilos corretos
-    # para cabeçalhos vs. dados, mas vamos manter sua lógica original por enquanto.
-    for row in table.rows:
-        row.height = Cm(0.5)
-        row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-        for cell in row.cells:
-            for paragraph in cell.paragraphs:
-                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                for run in paragraph.runs:
-                    run.font.name = "Calibri"
-                    run.font.size = Pt(7)
-                    run.font.bold = False
-
-    # 2. Ajustar o número de linhas na tabela para corresponder à quantidade_dias_no_mes
-    # Linhas de dados necessárias = quantidade_dias_no_mes
-    # Total de linhas que a tabela deve ter = linha_inicial (cabeçalho) + quantidade_dias_no_mes
+    # 1. Ajustar o número de linhas na tabela para corresponder à quantidade de dias no mês
     target_total_rows_in_table = linha_inicial + quantidade_dias_no_mes
 
     # Remover linhas excedentes do final da tabela
     while len(table.rows) > target_total_rows_in_table:
-        row_to_delete = table.rows[-1] # Pega a última linha da tabela
+        row_to_delete = table.rows[-1]
         tbl_element = table._tbl
         tr_element = row_to_delete._tr
         tbl_element.remove(tr_element)
-        print(f"INFO: Linha excedente removida. Total de linhas agora: {len(table.rows)}")
 
     # Adicionar linhas se estiverem faltando
     while len(table.rows) < target_total_rows_in_table:
         new_row = table.add_row()
-        new_row.height = Cm(0.5) # Aplicar altura padrão às novas linhas
+        new_row.height = Cm(0.5)
         new_row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-        # Garante que as células da nova linha tenham parágrafos formatados
         for cell in new_row.cells:
-            # Assegura que existe pelo menos um parágrafo e o alinha
             p = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
             p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-            # Pode-se definir a fonte padrão para o parágrafo ou para um run vazio aqui, se necessário
-            # Mas geralmente o estilo da tabela ou a formatação do conteúdo adicionado depois cuidará disso.
-        print(f"INFO: Linha faltante adicionada. Total de linhas agora: {len(table.rows)}")
 
-    # 3. Preencher as linhas de dados (seu código original a partir daqui)
+    # 2. Preencher as linhas de dados
     for i in range(quantidade_dias_no_mes):
         dia = i + 1
-        # Agora é seguro acessar table.rows[linha_inicial + i]
         row = table.rows[linha_inicial + i]
-        data_atual = date(ano, mes_numerico, dia) # Use o nome data_atual como no seu código
-        dia_semana = pega_final_de_semana(ano, mes_numerico, dia) # Assume que esta função existe
+        data_atual_obj = date(ano, mes_numerico, dia)
+        dia_semana = pega_final_de_semana(ano, mes_numerico, dia)
 
-        # Limpeza das células da linha atual antes de preencher
+        # Limpeza e formatação inicial da linha
         for cell in row.cells:
-            cell.text = "" # Limpa o conteúdo principal da célula (primeiro parágrafo)
-            for paragraph in cell.paragraphs: # Itera sobre todos os parágrafos
-                paragraph.clear() # Limpa todos os 'runs' (texto formatado) de cada parágrafo
-                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER # Garante o alinhamento
+            cell.text = "" # Limpa o conteúdo principal
+            for paragraph in cell.paragraphs:
+                paragraph.clear() # Limpa todos os 'runs'
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-        # Preencher número do dia
+        # Preencher o número do dia na primeira coluna
         dia_cell = row.cells[0]
-        # Garante que há um parágrafo para adicionar o run
-        dia_paragraph = dia_cell.paragraphs[0] if dia_cell.paragraphs else dia_cell.add_paragraph()
-        dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER # Reafirma o alinhamento se for um novo parágrafo
+        dia_paragraph = dia_cell.paragraphs[0]
         dia_run = dia_paragraph.add_run(str(dia))
         dia_run.font.name = "Calibri"
         dia_run.font.size = Pt(8)
-        # dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER # Já definido
+        dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-        # Lógica para Sábados, Domingos, Feriados e Férias
-        # A ordem das suas verificações originais define a prioridade (a última condição que sobrescreve cell.text vence)
-        
-        texto_status = "" # Para Sábado/Domingo
-
+        # Lógica para Sábados e Domingos
+        texto_status = ""
         if dia_semana == 5:
             texto_status = "SÁBADO"
         elif dia_semana == 6:
             texto_status = "DOMINGO"
 
-        if texto_status: # Escreve SÁBADO ou DOMINGO
-            for j in [2, 5, 9, 13]: # Seus índices de coluna originais
+        if texto_status:
+            set_row_background(row, 'C5E0B4') # Pinta a linha de verde claro
+            for j in [2, 5, 9, 13]:
                 if j < len(row.cells):
                     cell = row.cells[j]
-                    cell.text = texto_status # Define o texto, limpando parágrafos anteriores
-                    # Reaplicar formatação após cell.text
+                    cell.text = texto_status
                     for paragraph in cell.paragraphs:
                         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                        for run in paragraph.runs: # O texto agora está em um ou mais runs
+                        for run in paragraph.runs:
                             run.font.bold = True
-                            run.font.name = "Calibri" # Garantir consistência
-                            run.font.size = Pt(7)     # Garantir consistência
-                else:
-                    print(f"AVISO: Índice de coluna {j} para S/D fora dos limites.")
+                            run.font.name = "Calibri"
+                            run.font.size = Pt(6) # Tamanho ajustado
 
-
-        # Feriado (exceto se for sábado ou domingo) - sobrescreve células se for o caso
-        if data_atual in feriados and dia_semana not in [5, 6]:
+        # Lógica para Ponto Facultativo e Feriado (apenas em dias de semana)
+        # A verificação de ponto facultativo vem primeiro
+        if data_atual_obj in pontos_facultativos and dia_semana not in [5, 6]:
+            set_row_background(row, 'C5E0B4')
+            for j in [2, 5, 9, 13]:
+                if j < len(row.cells):
+                    cell = row.cells[j]
+                    cell.text = "PONTO FACULTATIVO"
+                    for paragraph in cell.paragraphs:
+                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                        for run in paragraph.runs:
+                            run.font.bold = True
+                            run.font.name = "Calibri"
+                            run.font.size = Pt(6) # Tamanho ajustado
+        
+        # Se não for ponto facultativo, verifica se é feriado
+        elif data_atual_obj in feriados and dia_semana not in [5, 6]:
+            set_row_background(row, 'C5E0B4')
             for j in [2, 5, 9, 13]:
                 if j < len(row.cells):
                     cell = row.cells[j]
@@ -332,12 +337,9 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                         for run in paragraph.runs:
                             run.font.bold = True
                             run.font.name = "Calibri"
-                            run.font.size = Pt(7)
-                else:
-                    print(f"AVISO: Índice de coluna {j} para FERIADO fora dos limites.")
+                            run.font.size = Pt(6) # Tamanho ajustado
 
-
-        # Férias (exceto fins de semana) - sobrescreve células se for o caso
+        # Lógica para Férias (sobrescreve o status anterior se for o caso, exceto em fins de semana)
         if funcionario.get('feriasinicio') and funcionario.get('feriasfinal'):
             ferias_inicio_raw = funcionario['feriasinicio']
             ferias_final_raw = funcionario['feriasfinal']
@@ -345,7 +347,9 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
             ferias_final = ferias_final_raw.date() if hasattr(ferias_final_raw, 'date') else ferias_final_raw
 
             if isinstance(ferias_inicio, date) and isinstance(ferias_final, date) and \
-               (ferias_inicio <= data_atual <= ferias_final and dia_semana not in [5, 6]):
+               (ferias_inicio <= data_atual_obj <= ferias_final and dia_semana not in [5, 6]):
+                
+                set_row_background(row, 'C5E0B4') # Garante que a linha de férias também seja pintada
                 for j in [2, 5, 9, 13]:
                     if j < len(row.cells):
                         cell = row.cells[j]
@@ -355,9 +359,8 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                             for run in paragraph.runs:
                                 run.font.bold = True
                                 run.font.name = "Calibri"
-                                run.font.size = Pt(7)
-                    else:
-                        print(f"AVISO: Índice de coluna {j} para FÉRIAS fora dos limites.")
+                                run.font.size = Pt(6) # Tamanho ajustado
+
     
     # Se você tem múltiplas tabelas no documento e só quer processar a primeira,
     # o loop `for table in doc.tables:` pode ser removido ou adicionar um `break` no final.
