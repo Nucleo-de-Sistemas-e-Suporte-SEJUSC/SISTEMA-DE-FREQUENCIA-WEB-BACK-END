@@ -273,9 +273,12 @@ def converte_estagiario_pdf():
     
     
 def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados):
-    from datetime import datetime, timedelta, date # 'date' é importante aqui
+    from datetime import datetime, timedelta, date
+    from docx.shared import Cm, Pt
+    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+    from docx.enum.table import WD_ROW_HEIGHT_RULE
 
-    def calcula_periodo_21_a_20(ano_calc, mes_calc): # Renomeei os parâmetros para evitar conflito
+    def calcula_periodo_21_a_20(ano_calc, mes_calc):
         data_inicio = datetime(ano_calc, mes_calc, 21)
         if mes_calc == 12:
             data_fim = datetime(ano_calc + 1, 1, 20)
@@ -283,7 +286,6 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados):
             data_fim = datetime(ano_calc, mes_calc + 1, 20)
 
         dias_periodo = []
-        # Renomeei 'data_atual' aqui para 'data_iter_calc' para clareza
         data_iter_calc = data_inicio
         while data_iter_calc <= data_fim:
             dias_periodo.append({
@@ -292,138 +294,109 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados):
                 "ano": data_iter_calc.year
             })
             data_iter_calc += timedelta(days=1)
-        # O print que você tinha já mostra que esta parte funciona
-        # print(f"Dias do período de 21 a 20: {dias_periodo}")
         return dias_periodo
 
     linha_inicial = 7
+    table = doc.tables[0] # Pega a primeira tabela do documento
 
-    for table in doc.tables:
-        # ... (Configuração das linhas existentes) ...
-        for row_idx, row in enumerate(table.rows): # Adicionado enumerate para debug, se necessário
-            row.height = Cm(0.55)
-            row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-            for cell in row.cells:
-                for paragraph in cell.paragraphs:
-                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                    for run in paragraph.runs:
-                        run.font.name = "Calibri"
-                        run.font.size = Pt(7)
-                        run.font.bold = False
+    # Configuração inicial das linhas existentes
+    for row in table.rows:
+        row.height = Cm(0.55)
+        row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                for run in paragraph.runs:
+                    run.font.name = "Calibri"
+                    run.font.size = Pt(7)
+                    run.font.bold = False
 
+    dias_periodo = calcula_periodo_21_a_20(ano, mes_numerico)
 
-        dias_periodo = calcula_periodo_21_a_20(ano, mes_numerico)
-        linhas_necessarias = linha_inicial + len(dias_periodo)
+    # ### LÓGICA DE CRIAÇÃO DE LINHAS REMOVIDA DAQUI ###
+    # O código que adicionava novas linhas foi apagado, conforme solicitado.
 
-        if len(table.rows) < linhas_necessarias:
-            for _ in range(linhas_necessarias - len(table.rows)):
-                new_row = table.add_row()
-                # É importante configurar as células da nova linha também, se necessário
-                # Ex: new_row.height = Cm(0.55); new_row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-                # for cell in new_row.cells: cell.width = Cm(1.5) ... etc.
+    # Loop principal para preencher os dados de cada dia do período
+    for i, dia_info in enumerate(dias_periodo):
+        # ... (O restante do seu loop que preenche os dias continua aqui, sem alterações)
+        dia = dia_info["dia"]
+        mes_iter = dia_info["mes"]
+        ano_dia = dia_info["ano"]
+        
+        data_iteracao_atual = date(ano_dia, mes_iter, dia)
+        # Assumindo que a função pega_final_de_semana existe em outro lugar
+        dia_semana = pega_final_de_semana(ano_dia, mes_iter, dia)
+        
+        row = table.rows[linha_inicial + i]
+        
+        for cell in row.cells:
+            cell.text = ""
+            for paragraph in cell.paragraphs:
+                paragraph.clear()
+        
+        dia_cell = row.cells[0]
+        dia_paragraph = dia_cell.paragraphs[0]
+        dia_run = dia_paragraph.add_run(str(dia))
+        dia_run.font.name = "Calibri"
+        dia_run.font.size = Pt(8)
+        dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-
-        for i, dia_info in enumerate(dias_periodo):
-            dia = dia_info["dia"]
-            mes_iter = dia_info["mes"]
-            ano_dia = dia_info["ano"]
-
-            # Verifica se é o último dia do período (dia 20)
-            is_ultimo_dia = (i == len(dias_periodo) - 1) or (dia == 20 and (i == len(dias_periodo) - 1))
-
-            # ***** CORREÇÃO PRINCIPAL *****
-            # Defina a data da iteração atual AQUI
-            data_iteracao_atual = date(ano_dia, mes_iter, dia)
-            # ******************************
-
-            dia_semana = pega_final_de_semana(ano_dia, mes_iter, dia) # Use mes_iter
+        is_feriado = data_iteracao_atual in feriados
+        is_ferias = False
+        if estagiario.get('feriasinicio') and estagiario.get('feriasfinal'):
+            ferias_inicio = estagiario['feriasinicio']
+            if isinstance(ferias_inicio, datetime):
+                ferias_inicio = ferias_inicio.date()
             
-            # Verifica se a linha existe antes de acessá-la
-            if (linha_inicial + i) >= len(table.rows):
-                print(f"Aviso: Tentando acessar linha {linha_inicial + i}, mas a tabela tem apenas {len(table.rows)} linhas. Adicionando nova linha.")
-                # Poderia adicionar uma nova linha aqui se a lógica anterior de adicionar linhas falhar ou não cobrir todos os casos
-                # table.add_row() # Isso pode dessincronizar a formatação se não for manuseado com cuidado
-                # Contudo, a lógica de adicionar linhas extras acima deveria prevenir isso.
-                # Se este erro ocorrer, revise a lógica de adição de linhas.
-                continue # Pula esta iteração para evitar erro de índice
+            ferias_final = estagiario['feriasfinal']
+            if isinstance(ferias_final, datetime):
+                ferias_final = ferias_final.date()
 
-            row = table.rows[linha_inicial + i]
-            
-            print(f"Row {linha_inicial + i} tem {len(row.cells)} células")
-               
-            for cell in row.cells:
-                cell.text = ""
-                for paragraph in cell.paragraphs:
-                    paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                    paragraph.clear()
-            
-            dia_cell = row.cells[0]
-            dia_paragraph = dia_cell.paragraphs[0]
-            dia_run = dia_paragraph.add_run(str(dia))
-            dia_run.font.name = "Calibri"
-            dia_run.font.size = Pt(8)
-            dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            if ferias_inicio <= data_iteracao_atual <= ferias_final:
+                is_ferias = True
 
-            # Agora use 'data_iteracao_atual'
-            is_feriado = data_iteracao_atual in feriados
-            is_ferias = False
+        texto = None
+        if dia_semana == 5: texto = "SÁBADO"
+        elif dia_semana == 6: texto = "DOMINGO"
+        elif is_ferias and dia_semana not in [5, 6]: texto = "FÉRIAS"
+        elif is_feriado and dia_semana not in [5, 6]: texto = "FERIADO"
 
-            if estagiario.get('feriasinicio') and estagiario.get('feriasfinal'):
-                # Certifique-se que 'feriasinicio' e 'feriasfinal' são objetos date
-                # Se forem datetime, converta com .date()
-                ferias_inicio = estagiario['feriasinicio']
-                if isinstance(ferias_inicio, datetime):
-                    ferias_inicio = ferias_inicio.date()
-                
-                ferias_final = estagiario['feriasfinal']
-                if isinstance(ferias_final, datetime):
-                    ferias_final = ferias_final.date()
+        if texto:
+            # Assumindo que a função set_row_background existe
+            set_row_background(row, 'C5E0B4')
+            celulas_para_marcar = [2, 5, 8, 12]
+            if texto == "FERIADO":
+                 celulas_para_marcar = [2, 5, 9]
 
-                if ferias_inicio <= data_iteracao_atual <= ferias_final:
-                    is_ferias = True
+            for j in celulas_para_marcar:
+                if j < len(row.cells):
+                    cell = row.cells[j]
+                    for p in cell.paragraphs:
+                        p.clear()
+                    p_cell = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
+                    run_cell = p_cell.add_run(texto)
+                    run_cell.font.bold = True
+                    run_cell.font.name = "Calibri"
+                    run_cell.font.size = Pt(7)
+                    p_cell.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+        # ... (Fim do loop)
 
-            if dia_semana == 5:    # Sábado
-                texto = "SÁBADO"
-            elif dia_semana == 6:   # Domingo
-                texto = "DOMINGO"
-            elif is_ferias and dia_semana not in [5, 6]: # Férias (e não é fim de semana)
-                texto = "FÉRIAS"
-            elif is_feriado and dia_semana not in [5, 6]: # Feriado (e não é fim de semana nem férias já marcadas)
-                texto = "FERIADO"
-            else:
-                texto = None # Dia normal de trabalho
+    # ### NOVA LÓGICA PARA REMOVER LINHAS EXTRAS ###
+    # Este bloco foi adicionado conforme solicitado.
+    
+    # Calcula o número de linhas de dados que o template possui
+    total_linhas_dados_template = len(table.rows) - linha_inicial
+    
+    # Calcula o número de dias (e, portanto, linhas) que o período atual realmente usou
+    dias_no_periodo_atual = len(dias_periodo)
 
-            if texto:
-                # Células para SÁBADO, DOMINGO, FÉRIAS: [2, 5, 8, 12]
-                # Células para FERIADO: [2, 5, 9, 13] - ATENÇÃO: Diferente! Verifique se está correto.
-                celulas_para_marcar = [2, 5, 8, 12]
-                if texto == "FERIADO":
-                     celulas_para_marcar = [2, 5, 9] # Manteve a lógica original, mas verifique.
-                set_row_background(row, 'C5E0B4') # VERDE
-
-                for j in celulas_para_marcar:
-                    if j < len(row.cells): # Verificação de segurança
-                        cell = row.cells[j]
-                        # Limpar parágrafos existentes para evitar texto duplicado
-                        for p in cell.paragraphs:
-                            p.clear()
-                        # Adicionar novo parágrafo com o texto
-                        p_cell = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
-                        run_cell = p_cell.add_run(texto)
-                        run_cell.font.bold = True
-                        run_cell.font.name = "Calibri" # Garante a formatação
-                        run_cell.font.size = Pt(7)     # Garante a formatação
-                        p_cell.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                    else:
-                        print(f"Aviso: Índice de célula {j} fora do alcance para a linha.")
-            if len(row.cells) != 13:
-                print(f"Linha {linha_inicial + i} ignorada por ter {len(row.cells)} células.")
-                continue
-            if is_ultimo_dia:
-                # Aqui você pode aplicar qualquer lógica especial para a linha do dia 20
-                print(f"Tratando linha especial para o dia 20: {dia}/{mes_iter}/{ano_dia}")
-                # Exemplo: garantir que a linha tenha 13 células
-                if len(row.cells) != 13:
-                    print(f"Ajustando número de células da linha do dia 20")
-                    # Adicione células ou trate conforme necessário
-                # Ou aplicar formatação diferente, texto, etc.
+    # Se o número de linhas no template for maior que o necessário, remove as que sobraram
+    if total_linhas_dados_template > dias_no_periodo_atual:
+        linhas_para_remover = total_linhas_dados_template - dias_no_periodo_atual
+        
+        for _ in range(linhas_para_remover):
+            # Pega a referência do elemento da última linha (tr) e remove da tabela (tbl)
+            ultima_linha = table.rows[-1]
+            tr_element = ultima_linha._tr
+            tbl_element = table._tbl
+            tbl_element.remove(tr_element)
