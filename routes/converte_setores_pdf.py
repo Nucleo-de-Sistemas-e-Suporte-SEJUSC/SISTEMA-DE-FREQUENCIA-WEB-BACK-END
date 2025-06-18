@@ -252,17 +252,16 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
     # 1. Ajustar o número de linhas na tabela para corresponder à quantidade de dias no mês
     target_total_rows_in_table = linha_inicial + quantidade_dias_no_mes
 
-    # Remover linhas excedentes do final da tabela
     while len(table.rows) > target_total_rows_in_table:
         row_to_delete = table.rows[-1]
         tbl_element = table._tbl
         tr_element = row_to_delete._tr
         tbl_element.remove(tr_element)
 
-    # Adicionar linhas se estiverem faltando
     while len(table.rows) < target_total_rows_in_table:
         new_row = table.add_row()
-        new_row.height = Cm(0.5)
+        # ALTURA DA LINHA AJUSTADA AQUI
+        new_row.height = Cm(0.48) 
         new_row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
         for cell in new_row.cells:
             p = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
@@ -272,14 +271,19 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
     for i in range(quantidade_dias_no_mes):
         dia = i + 1
         row = table.rows[linha_inicial + i]
+        
+        # APLICA A ALTURA AJUSTADA TAMBÉM NAS LINHAS EXISTENTES PARA GARANTIR CONSISTÊNCIA
+        row.height = Cm(0.48)
+        row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+        
         data_atual_obj = date(ano, mes_numerico, dia)
         dia_semana = pega_final_de_semana(ano, mes_numerico, dia)
 
         # Limpeza e formatação inicial da linha
         for cell in row.cells:
-            cell.text = "" # Limpa o conteúdo principal
+            cell.text = "" 
             for paragraph in cell.paragraphs:
-                paragraph.clear() # Limpa todos os 'runs'
+                paragraph.clear() 
                 paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
         # Preencher o número do dia na primeira coluna
@@ -298,7 +302,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
             texto_status = "DOMINGO"
 
         if texto_status:
-            set_row_background(row, 'C5E0B4') # Pinta a linha de verde claro
+            set_row_background(row, 'C5E0B4') 
             for j in [2, 5, 9, 13]:
                 if j < len(row.cells):
                     cell = row.cells[j]
@@ -308,10 +312,9 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                         for run in paragraph.runs:
                             run.font.bold = True
                             run.font.name = "Calibri"
-                            run.font.size = Pt(6) # Tamanho ajustado
+                            run.font.size = Pt(6) 
 
         # Lógica para Ponto Facultativo e Feriado (apenas em dias de semana)
-        # A verificação de ponto facultativo vem primeiro
         if data_atual_obj in pontos_facultativos and dia_semana not in [5, 6]:
             set_row_background(row, 'C5E0B4')
             for j in [2, 5, 9, 13]:
@@ -323,9 +326,8 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                         for run in paragraph.runs:
                             run.font.bold = True
                             run.font.name = "Calibri"
-                            run.font.size = Pt(6) # Tamanho ajustado
+                            run.font.size = Pt(6)
         
-        # Se não for ponto facultativo, verifica se é feriado
         elif data_atual_obj in feriados and dia_semana not in [5, 6]:
             set_row_background(row, 'C5E0B4')
             for j in [2, 5, 9, 13]:
@@ -337,7 +339,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                         for run in paragraph.runs:
                             run.font.bold = True
                             run.font.name = "Calibri"
-                            run.font.size = Pt(6) # Tamanho ajustado
+                            run.font.size = Pt(6)
 
         # Lógica para Férias (sobrescreve o status anterior se for o caso, exceto em fins de semana)
         if funcionario.get('feriasinicio') and funcionario.get('feriasfinal'):
@@ -349,7 +351,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
             if isinstance(ferias_inicio, date) and isinstance(ferias_final, date) and \
                (ferias_inicio <= data_atual_obj <= ferias_final and dia_semana not in [5, 6]):
                 
-                set_row_background(row, 'C5E0B4') # Garante que a linha de férias também seja pintada
+                set_row_background(row, 'C5E0B4')
                 for j in [2, 5, 9, 13]:
                     if j < len(row.cells):
                         cell = row.cells[j]
@@ -359,8 +361,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                             for run in paragraph.runs:
                                 run.font.bold = True
                                 run.font.name = "Calibri"
-                                run.font.size = Pt(6) # Tamanho ajustado
-
+                                run.font.size = Pt(6)
     
     # Se você tem múltiplas tabelas no documento e só quer processar a primeira,
     # o loop `for table in doc.tables:` pode ser removido ou adicionar um `break` no final.
