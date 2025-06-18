@@ -39,8 +39,6 @@ def set_row_background(row, color_hex):
         set_cell_background(cell, color_hex)
 
 def pegar_feriados_mes(ano, mes, estado='AM'):
-    print(f"DEBUG: Iniciando pegar_feriados_mes para ano={ano}, mes={mes}, estado='{estado}'") # DEBUG
-
     br_feriados = holidays.Brazil(state=estado)
     pascoa = easter(ano)
     corpus_christi = pascoa + timedelta(days=60)
@@ -48,61 +46,43 @@ def pegar_feriados_mes(ano, mes, estado='AM'):
 
     conexao = connect_mysql()
     cursor = conexao.cursor(dictionary=True)
-    feriados_municipais_db = [] # Inicializa para o caso de falha na query
+    feriados_municipais_db = []
     try:
-        query_sql = "SELECT data FROM feriados_municipais WHERE estado = %s AND YEAR(data) = %s"
+        query_sql = "SELECT data, ponto_facultativo FROM feriados_municipais WHERE estado = %s AND YEAR(data) = %s"
         params = (estado, ano)
-        print(f"DEBUG: Executando SQL: {query_sql} com params {params}") # DEBUG
         cursor.execute(query_sql, params)
         feriados_municipais_db = cursor.fetchall()
-        print(f"DEBUG: Feriados municipais crus do DB: {feriados_municipais_db}") # DEBUG
-        if feriados_municipais_db:
-            # Itera sobre uma cópia ou acessa diretamente, mas vamos ver o tipo do primeiro, se existir
-            print(f"DEBUG: Tipo do valor 'data' do primeiro feriado do DB (se existir): {type(feriados_municipais_db[0]['data'])}") # DEBUG
-    except Exception as e:
-        print(f"DEBUG: Erro ao buscar feriados municipais do DB: {e}") #DEBUG
     finally:
-        if conexao.is_connected(): # Verifica se a conexão está aberta antes de fechar
-            cursor.close() # Fecha o cursor primeiro
+        if conexao.is_connected():
+            cursor.close()
             conexao.close()
-            print("DEBUG: Conexão com MySQL fechada.") # DEBUG
-        else:
-            print("DEBUG: Conexão com MySQL já estava fechada ou não foi estabelecida.") #DEBUG
 
-
+    pontos_facultativos = []
+    feriados_normais = []
     for feriado_row in feriados_municipais_db:
         data_db = feriado_row['data']
-        print(f"DEBUG: Processando feriado_row['data']: {data_db} (Tipo: {type(data_db)})") # DEBUG
-        
+        ponto_facultativo = feriado_row.get('ponto_facultativo', 0)
         data_feriado_obj = None
         if data_db is None:
-            print(f"DEBUG: data_db é None. Pulando.") #DEBUG
             continue
-
-        if hasattr(data_db, 'date'):  # Verifica se é um objeto datetime.datetime
+        if hasattr(data_db, 'date'):
             data_feriado_obj = data_db.date()
-            print(f"DEBUG: Convertido de datetime.datetime para date: {data_feriado_obj}") # DEBUG
-        elif isinstance(data_db, date):  # Verifica se já é um objeto datetime.date
+        elif isinstance(data_db, date):
             data_feriado_obj = data_db
-            print(f"DEBUG: Já é um objeto date: {data_feriado_obj}") # DEBUG
         else:
-            # Caso seja uma string ou outro tipo, tenta converter
             try:
                 data_feriado_obj = date.fromisoformat(str(data_db))
-                print(f"DEBUG: Convertido de string/outro para date: {data_feriado_obj}") # DEBUG
             except ValueError:
-                print(f"DEBUG: Alerta: Formato de data inválido '{data_db}' não pôde ser convertido.") # DEBUG
-                continue # Pula para o próximo feriado
-
+                continue
         if data_feriado_obj:
+            if ponto_facultativo:
+                pontos_facultativos.append(data_feriado_obj)
+            else:
+                feriados_normais.append(data_feriado_obj)
             br_feriados[data_feriado_obj] = "Feriado Municipal"
-            print(f"DEBUG: Adicionado ao br_feriados: {data_feriado_obj}") # DEBUG
-
-    print(f"DEBUG: Conteúdo de br_feriados ANTES de filtrar por mês: {br_feriados.items()}") # DEBUG
     feriados_mes = [d for d in br_feriados if d.month == mes]
-    print(f"DEBUG: Feriados filtrados para o mês {mes}: {feriados_mes}") # DEBUG
-    return feriados_mes
-
+    pontos_facultativos_mes = [d for d in pontos_facultativos if d.month == mes]
+    return feriados_mes, pontos_facultativos_mes
 
 
 def formatar_horario_para_hh_mm_v2(valor_horario):
@@ -191,7 +171,7 @@ def converte_estagiario_pdf():
         
         estado_para_feriados = 'AM' # Ou defina dinamicamente se necessário
 
-        feriados_mes_corrente_periodo = pegar_feriados_mes(ano, mes_numerico, estado=estado_para_feriados) # Feriados do primeiro mês do período (ex: Junho)
+        feriados_mes_corrente, pontos_fac_mes_corrente = pegar_feriados_mes(ano, mes_numerico, estado=estado_para_feriados)
 
         ano_proximo_mes_periodo = ano
         mes_numerico_proximo_periodo = mes_numerico + 1
@@ -199,11 +179,11 @@ def converte_estagiario_pdf():
             mes_numerico_proximo_periodo = 1
             ano_proximo_mes_periodo += 1
         
-        feriados_proximo_mes_periodo = pegar_feriados_mes(ano_proximo_mes_periodo, mes_numerico_proximo_periodo, estado=estado_para_feriados) # Feriados do segundo mês do período (ex: Julho)
+        feriados_proximo_mes, pontos_fac_proximo_mes = pegar_feriados_mes(ano_proximo_mes_periodo, mes_numerico_proximo_periodo, estado=estado_para_feriados)
         
         # Combina as duas listas de feriados. Usar set para evitar duplicatas caso haja alguma sobreposição (improvável com meses distintos)
-        todos_feriados_do_periodo = list(set(feriados_mes_corrente_periodo + feriados_proximo_mes_periodo))
-        print(f"DEBUG: Todos feriados para o período (mes {mes_numerico} e {mes_numerico_proximo_periodo}): {todos_feriados_do_periodo}")
+        todos_feriados_do_periodo = list(set(feriados_mes_corrente + feriados_proximo_mes))
+        todos_pontos_facultativos_do_periodo = list(set(pontos_fac_mes_corrente + pontos_fac_proximo_mes))
         # -- Fim da Modificação --
         #feriados_do_mes = pegar_feriados_mes(ano, mes_numerico)
 
@@ -211,7 +191,7 @@ def converte_estagiario_pdf():
             template_path = 'FREQUÊNCIA ESTAGIÁRIOS - MODELO.docx'
             doc = Document(template_path)
 
-            cria_dias_da_celula(doc, ano, mes_numerico, estagiario, todos_feriados_do_periodo)
+            cria_dias_da_celula(doc, ano, mes_numerico, estagiario, todos_feriados_do_periodo, todos_pontos_facultativos_do_periodo)
 
             troca_de_dados = {
                 "CAMPO SETOR": estagiario['setor'],
@@ -272,7 +252,7 @@ def converte_estagiario_pdf():
         return jsonify({'erro': f'Erro: {str(exception)}'}), 500
     
     
-def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados):
+def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados, pontos_facultativos):
     from datetime import datetime, timedelta, date
     from docx.shared import Cm, Pt
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
@@ -297,9 +277,9 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados):
         return dias_periodo
 
     linha_inicial = 7
-    table = doc.tables[0] # Pega a primeira tabela do documento
+    table = doc.tables[0]
 
-    # Configuração inicial das linhas existentes
+    # ... (a formatação inicial da tabela permanece a mesma)
     for row in table.rows:
         row.height = Cm(0.55)
         row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
@@ -311,20 +291,15 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados):
                     run.font.size = Pt(7)
                     run.font.bold = False
 
+
     dias_periodo = calcula_periodo_21_a_20(ano, mes_numerico)
 
-    # ### LÓGICA DE CRIAÇÃO DE LINHAS REMOVIDA DAQUI ###
-    # O código que adicionava novas linhas foi apagado, conforme solicitado.
-
-    # Loop principal para preencher os dados de cada dia do período
     for i, dia_info in enumerate(dias_periodo):
-        # ... (O restante do seu loop que preenche os dias continua aqui, sem alterações)
         dia = dia_info["dia"]
         mes_iter = dia_info["mes"]
         ano_dia = dia_info["ano"]
         
         data_iteracao_atual = date(ano_dia, mes_iter, dia)
-        # Assumindo que a função pega_final_de_semana existe em outro lugar
         dia_semana = pega_final_de_semana(ano_dia, mes_iter, dia)
         
         row = table.rows[linha_inicial + i]
@@ -341,61 +316,52 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados):
         dia_run.font.size = Pt(8)
         dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
+        # --- LÓGICA DE PREENCHIMENTO ATUALIZADA ---
+        is_ponto_facultativo = data_iteracao_atual in pontos_facultativos
         is_feriado = data_iteracao_atual in feriados
         is_ferias = False
+        
         if estagiario.get('feriasinicio') and estagiario.get('feriasfinal'):
-            ferias_inicio = estagiario['feriasinicio']
-            if isinstance(ferias_inicio, datetime):
-                ferias_inicio = ferias_inicio.date()
-            
-            ferias_final = estagiario['feriasfinal']
-            if isinstance(ferias_final, datetime):
-                ferias_final = ferias_final.date()
-
+            ferias_inicio = estagiario['feriasinicio'].date() if hasattr(estagiario['feriasinicio'], 'date') else estagiario['feriasinicio']
+            ferias_final = estagiario['feriasfinal'].date() if hasattr(estagiario['feriasfinal'], 'date') else estagiario['feriasfinal']
             if ferias_inicio <= data_iteracao_atual <= ferias_final:
                 is_ferias = True
 
         texto = None
-        if dia_semana == 5: texto = "SÁBADO"
-        elif dia_semana == 6: texto = "DOMINGO"
-        elif is_ferias and dia_semana not in [5, 6]: texto = "FÉRIAS"
-        elif is_feriado and dia_semana not in [5, 6]: texto = "FERIADO"
+        # A ordem aqui é importante para definir a prioridade
+        if dia_semana == 5:
+            texto = "SÁBADO"
+        elif dia_semana == 6:
+            texto = "DOMINGO"
+        elif is_ponto_facultativo and dia_semana not in [5, 6]: # VERIFICA PONTO FACULTATIVO
+            texto = "PONTO FACULTATIVO"
+        elif is_ferias and dia_semana not in [5, 6]:
+            texto = "FÉRIAS"
+        elif is_feriado and dia_semana not in [5, 6]:
+            texto = "FERIADO"
 
         if texto:
-            # Assumindo que a função set_row_background existe
-            set_row_background(row, 'C5E0B4')
-            celulas_para_marcar = [2, 5, 8, 12]
-            if texto == "FERIADO":
-                 celulas_para_marcar = [2, 5, 9]
+            set_row_background(row, 'C5E0B4') # Cor de fundo verde claro
+            # As colunas para marcar são as mesmas para todos os status (Sábado, Feriado, etc.)
+            celulas_para_marcar = [2, 5, 9, 13]
 
             for j in celulas_para_marcar:
                 if j < len(row.cells):
                     cell = row.cells[j]
-                    for p in cell.paragraphs:
-                        p.clear()
+                    for p in cell.paragraphs: p.clear()
                     p_cell = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
                     run_cell = p_cell.add_run(texto)
                     run_cell.font.bold = True
                     run_cell.font.name = "Calibri"
-                    run_cell.font.size = Pt(7)
+                    run_cell.font.size = Pt(6)
                     p_cell.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-        # ... (Fim do loop)
 
-    # ### NOVA LÓGICA PARA REMOVER LINHAS EXTRAS ###
-    # Este bloco foi adicionado conforme solicitado.
-    
-    # Calcula o número de linhas de dados que o template possui
+    # ... (O restante da função com a lógica de remover linhas extras continua igual)
     total_linhas_dados_template = len(table.rows) - linha_inicial
-    
-    # Calcula o número de dias (e, portanto, linhas) que o período atual realmente usou
     dias_no_periodo_atual = len(dias_periodo)
-
-    # Se o número de linhas no template for maior que o necessário, remove as que sobraram
     if total_linhas_dados_template > dias_no_periodo_atual:
         linhas_para_remover = total_linhas_dados_template - dias_no_periodo_atual
-        
         for _ in range(linhas_para_remover):
-            # Pega a referência do elemento da última linha (tr) e remove da tabela (tbl)
             ultima_linha = table.rows[-1]
             tr_element = ultima_linha._tr
             tbl_element = table._tbl
