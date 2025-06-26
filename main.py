@@ -31,6 +31,7 @@ from routes.send_varios_setores_estagiario import bp_send_varios_setores_estagia
 from routes.buscar_arquivados_estagiarios import bp_buscar_estagiarios_arquivados
 from routes.feriados_municipais import bp_feriados_municipais
 from routes.limpar_pasta_setor import bp_limpar_pasta_setor
+from routes.atualizar_estagiario import bp_atualizar_estagiario
 from auth import auth_bp, login_manager  # ✅ Importação correta
 import os
 
@@ -83,6 +84,7 @@ app.register_blueprint(bp_send_varios_setores_estagiarios_pdf)
 app.register_blueprint(bp_buscar_estagiarios_arquivados)
 app.register_blueprint(bp_feriados_municipais)
 app.register_blueprint(bp_limpar_pasta_setor)
+app.register_blueprint(bp_atualizar_estagiario)
 @app.route("/")
 def home():
     return  "bem vindo ao sistema de rh "

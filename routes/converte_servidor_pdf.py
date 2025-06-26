@@ -167,6 +167,7 @@ def converte_servidor_pdf():
 
         if not funcionarios:
             conexao.close()
+            print(" cair aquiiii")
             return jsonify({'erro': 'Nenhum funcionário encontrado'}), 404
 
         arquivos_gerados = []
