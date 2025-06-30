@@ -396,13 +396,3 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                                 run.font.size = Pt(7)
                     else:
                         print(f"AVISO: Índice de coluna {j} para FÉRIAS fora dos limites.")
-    
-    # Se você tem múltiplas tabelas no documento e só quer processar a primeira,
-    # o loop `for table in doc.tables:` pode ser removido ou adicionar um `break` no final.
-    # Se o código original processava todas, mantenha o loop. Pela sua estrutura, parece que
-    # a intenção é processar a primeira tabela de frequência encontrada.
-    # Adicionando um break para processar apenas a primeira tabela, que é o comportamento mais comum.
-    # Remova este 'break' se você intencionalmente processa múltiplas tabelas de frequência no mesmo doc.
-    # No seu código original, não havia break, então o loop for table continuaria.
-    # Para este ajuste de linhas, faz mais sentido focar em UMA tabela principal.
-    # Se o loop for table for mantido, a lógica de ajuste de linhas será aplicada a cada tabela.
