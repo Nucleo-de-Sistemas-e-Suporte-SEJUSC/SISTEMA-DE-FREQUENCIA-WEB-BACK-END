@@ -383,6 +383,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
 
             if isinstance(ferias_inicio, date) and isinstance(ferias_final, date) and \
                (ferias_inicio <= data_atual <= ferias_final and dia_semana not in [5, 6]):
+                set_row_background(row, 'C5E0B4') # VERDE   
                 for j in [2, 5, 9, 13]:
                     if j < len(row.cells):
                         cell = row.cells[j]
