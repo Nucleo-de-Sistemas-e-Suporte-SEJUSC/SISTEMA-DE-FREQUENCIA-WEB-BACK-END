@@ -2,4 +2,5 @@
 /.venv/
 /arquivos-temporarios/
 /meuambiente/
-**/__pycache__/
+**/__pycache__
+/uploads/

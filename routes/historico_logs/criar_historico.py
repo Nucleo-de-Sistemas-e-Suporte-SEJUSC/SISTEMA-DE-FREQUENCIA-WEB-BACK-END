@@ -30,8 +30,6 @@ def criar_historico():
             "nome": nome,
             "mensagem": mensagem,
             "acao": acao,
-            
-
         } 
 
         return jsonify({'servidor': dados_retornados}), 201

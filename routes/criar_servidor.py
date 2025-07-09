@@ -21,6 +21,8 @@ def criar_servidor():
             return jsonify({'erro': 'JSON não enviado ou malformado'}), 400
 
         validate = validator.validate(body)
+        print("Erros de validação:", validator.errors)
+
         if not validate:
             return jsonify({'erro': 'Dados inválidos', 'mensagem': validator.errors}), 400
 
@@ -36,12 +38,9 @@ def criar_servidor():
         nome = body.get('nome')
         matricula = body.get('matricula')
         cargo = body.get('cargo')
-        #funcao = body.get('funcao')
         horario = body.get('horario')
         horarioentrada = body.get('entrada')
         horariosaida = body.get('saida')
-        feriasinicio = body.get('feriasinicio')
-        feriasfinal = body.get('feriasfinal')
         dataNascimento = body.get('data_nascimento')
         sexo = body.get('sexo')
         estadoCivil = body.get('estado_civil')
@@ -51,6 +50,7 @@ def criar_servidor():
         tituloEleitor = body.get('titulo_eleitor')
         cpf = body.get('cpf')
         pis = body.get('pis')
+
         dataAdmissao = body.get('data_admissao')
 
         # Verifica duplicidade
@@ -66,16 +66,17 @@ def criar_servidor():
         # Inserção
         try:
             criar_dados_servidor = """
-                INSERT INTO funcionarios (setor, nome, matricula, cargo,dataAdmissao, horario, horarioentrada, horariosaida, feriasinicio, feriasfinal, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
+                INSERT INTO funcionarios (setor, nome, matricula, cargo, horario, horarioentrada, horariosaida, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis,data_Admissao)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(criar_dados_servidor, (
-                setor, nome, matricula, cargo, horario,dataAdmissao, horarioentrada, horariosaida,
-                feriasinicio, feriasfinal, dataNascimento, sexo, estadoCivil, naturalidade,
-                nacionalidade, identidade, tituloEleitor, cpf, pis
+                setor, nome, matricula, cargo, horario, horarioentrada, horariosaida,
+                dataNascimento, sexo, estadoCivil, naturalidade,
+                nacionalidade, identidade, tituloEleitor, cpf, pis, dataAdmissao
             ))
             conexao.commit()
         except Error as db_err:
+            print(db_err)
             return jsonify({'erro': 'Erro ao inserir servidor', 'mensagem': str(db_err)}), 500
 
         dados_retornados = {
@@ -89,8 +90,6 @@ def criar_servidor():
             "horario": horario,
             "entrada": horarioentrada,
             "saida": horariosaida,
-            "feriasinicio": feriasinicio,
-            "feriastermino": feriasfinal,
             "data_nascimento": dataNascimento,
             "sexo": sexo,
             'estado_civil': estadoCivil,
@@ -99,7 +98,8 @@ def criar_servidor():
             "identidade": identidade,
             "titulo_eleitor": tituloEleitor,
             "cpf": cpf,
-            "pis": pis
+            "pis": pis,
+            #"rg": rg
         }
         return jsonify({'servidor': dados_retornados}), 201
 

@@ -8,8 +8,8 @@ from decorador import roles_required   # Importa o decorador personalizado
 bp_atualizar_servidor = Blueprint('bp_atualizar_servidor', __name__)
 
 @bp_atualizar_servidor.route('/api/servidores/<int:id>', methods=['PUT'])
-@login_required
-@roles_required('admin','editor')
+#@login_required
+#@roles_required('admin','editor')
 def atualizar_servidor(id):
     try:
         conexao = connect_mysql()
@@ -24,7 +24,7 @@ def atualizar_servidor(id):
             return jsonify({'erro': 'Servidor não encontrado'}), 404
 
         # Lista de campos que podem ser atualizados
-        campos_permitidos = ['setor', 'nome', 'matricula', 'cargo', 'funcao', 'horario', 'horarioentrada', 'horariosaida', 'feriasinicio', 'feriasfinal']
+        campos_permitidos = ['setor', 'nome', 'matricula', 'cargo', 'funcao', 'horario', 'horarioentrada', 'horariosaida', 'feriasinicio', 'feriasfinal','dataNascimento', 'sexo', 'estadoCivil', 'naturalidade', 'nacionalidade', 'identidade', 'tituloEleitor', 'cpf', 'pis', 'dataAdmissao']
         
         # Dicionário para armazenar os campos e valores que serão atualizados
         campos_para_atualizar = {}

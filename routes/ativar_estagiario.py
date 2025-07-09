@@ -8,8 +8,8 @@ from decorador import roles_required
 bp_ativar_estagiario = Blueprint('bp_ativar_estagiario', __name__) 
 
 @bp_ativar_estagiario.route('/api/estagiarios/<int:id>/atualizar-status', methods=['PATCH'])
-@login_required
-@roles_required('admin')
+#@login_required
+#@roles_required('admin')
 def ativar_estagiario(id):
     try:
         conexao = connect_mysql()
