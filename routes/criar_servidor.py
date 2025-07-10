@@ -15,25 +15,22 @@ def criar_servidor():
     conexao = None
     cursor = None
     try:
-        # Validação do JSON recebido
         body = request.get_json()
         if not body:
             return jsonify({'erro': 'JSON não enviado ou malformado'}), 400
 
         validate = validator.validate(body)
-        print("Erros de validação:", validator.errors)
-
         if not validate:
+            print("Erros de validação:", validator.errors)
             return jsonify({'erro': 'Dados inválidos', 'mensagem': validator.errors}), 400
 
-        # Conexão com o banco de dados
         try:
             conexao = connect_mysql()
             cursor = conexao.cursor(dictionary=True)
         except Error as db_err:
             return jsonify({'erro': 'Erro ao conectar ao banco de dados', 'mensagem': str(db_err)}), 500
 
-        # Extração dos campos
+        # --- Extração dos campos existentes ---
         setor = body.get('setor')
         nome = body.get('nome')
         matricula = body.get('matricula')
@@ -50,56 +47,59 @@ def criar_servidor():
         tituloEleitor = body.get('titulo_eleitor')
         cpf = body.get('cpf')
         pis = body.get('pis')
-
         dataAdmissao = body.get('data_admissao')
+
+        # --- Extração dos NOVOS campos ---
+        endereco = body.get('endereco')
+        nome_pai = body.get('nome_pai')
+        nome_mae = body.get('nome_mae')
+        servico_militar = body.get('servico_militar')
+        carteira_profissional = body.get('carteira_profissional')
+        data_posse = body.get('data_posse')
 
         # Verifica duplicidade
         try:
             verifica_se_servidor_existe = "SELECT * FROM funcionarios WHERE nome = %s"
             cursor.execute(verifica_se_servidor_existe, (nome,))
-            servidor = cursor.fetchone()
-            if servidor:
+            if cursor.fetchone():
                 return jsonify({'erro': 'Servidor já cadastrado'}), 409
         except Error as db_err:
             return jsonify({'erro': 'Erro ao consultar duplicidade', 'mensagem': str(db_err)}), 500
 
-        # Inserção
+        # --- Inserção com os NOVOS campos ---
         try:
             criar_dados_servidor = """
-                INSERT INTO funcionarios (setor, nome, matricula, cargo, horario, horarioentrada, horariosaida, data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, identidade, titulo_Eleitor, cpf, pis,data_Admissao)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO funcionarios (
+                    setor, nome, matricula, cargo, horario, horarioentrada, horariosaida, 
+                    data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, 
+                    identidade, titulo_Eleitor, cpf, pis, data_Admissao,
+                    endereco, nome_pai, nome_mae, servico_militar, carteira_profissional, data_posse
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(criar_dados_servidor, (
                 setor, nome, matricula, cargo, horario, horarioentrada, horariosaida,
                 dataNascimento, sexo, estadoCivil, naturalidade,
-                nacionalidade, identidade, tituloEleitor, cpf, pis, dataAdmissao
+                nacionalidade, identidade, tituloEleitor, cpf, pis, dataAdmissao,
+                endereco, nome_pai, nome_mae, servico_militar, carteira_profissional, data_posse
             ))
             conexao.commit()
         except Error as db_err:
             print(db_err)
             return jsonify({'erro': 'Erro ao inserir servidor', 'mensagem': str(db_err)}), 500
 
+        # --- Resposta com os NOVOS campos ---
         dados_retornados = {
             "id": cursor.lastrowid,
-            "setor": setor,
-            "nome": nome,
-            "matricula": matricula,
-            "cargo": cargo,
-            "data_admissao": dataAdmissao,
-            #"funcao": funcao,
-            "horario": horario,
-            "entrada": horarioentrada,
-            "saida": horariosaida,
-            "data_nascimento": dataNascimento,
-            "sexo": sexo,
-            'estado_civil': estadoCivil,
-            "naturalidade": naturalidade,
-            "nacionalidade": nacionalidade,
-            "identidade": identidade,
-            "titulo_eleitor": tituloEleitor,
-            "cpf": cpf,
-            "pis": pis,
-            #"rg": rg
+            "setor": setor, "nome": nome, "matricula": matricula, "cargo": cargo,
+            "data_admissao": dataAdmissao, "horario": horario, "entrada": horarioentrada,
+            "saida": horariosaida, "data_nascimento": dataNascimento, "sexo": sexo,
+            'estado_civil': estadoCivil, "naturalidade": naturalidade, "nacionalidade": nacionalidade,
+            "identidade": identidade, "titulo_eleitor": tituloEleitor, "cpf": cpf, "pis": pis,
+            # novos campos
+            "endereco": endereco, "nome_pai": nome_pai, "nome_mae": nome_mae, 
+            "servico_militar": servico_militar, "carteira_profissional": carteira_profissional, 
+            "data_posse": data_posse
         }
         return jsonify({'servidor': dados_retornados}), 201
 
@@ -107,7 +107,6 @@ def criar_servidor():
         return jsonify({'erro': 'Erro inesperado', 'mensagem': str(exception)}), 500
 
     finally:
-        # Garante fechamento do cursor e conexão mesmo em caso de erro
         if cursor:
             cursor.close()
         if conexao:
