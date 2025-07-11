@@ -1,0 +1,70 @@
+import openpyxl
+
+def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
+    """
+    Preenche a Ficha Funcional a partir de um template Excel (.xlsx).
+    Versão final com tratamento de campos vazios.
+
+    :param template_path: Caminho para o template .xlsx.
+    :param dados_funcionario: Dicionário com os dados do funcionário.
+    :param caminho_saida: Onde salvar o novo arquivo .xlsx preenchido.
+    :return: Tupla (sucesso_boolean, erro_mensagem_string)
+    """
+    try:
+        workbook = openpyxl.load_workbook(template_path)
+        sheet = workbook.active
+
+        mapeamento_celulas = {
+            # --- Bloco Superior ---
+            'AA7': dados_funcionario.get('matricula'),
+            'F13': dados_funcionario.get('nome'),
+
+            # --- Linha de Dados Pessoais 1 ---
+            'B19': str(dados_funcionario.get('data_nascimento', '')),
+            'F19': dados_funcionario.get('estado_civil'),
+            'I19': dados_funcionario.get('sexo'),
+            'M19': dados_funcionario.get('naturalidade'),
+            'R19': dados_funcionario.get('nacionalidade'),
+            'V19': dados_funcionario.get('carteira_profissional'),
+
+            # --- Linha de Dados Pessoais 2 ---
+            'B22': dados_funcionario.get('servico_militar'),
+            'F22': dados_funcionario.get('titulo_eleitor'),
+            'I22': dados_funcionario.get('cpf'),
+            'M22': dados_funcionario.get('identidade'),
+            'R22': dados_funcionario.get('pis'),
+            #'L13': dados_funcionario.get('carteira_saude'), # Campo não está no banco
+
+            # --- Bloco de Filiação ---
+            'B26': dados_funcionario.get('nome_pai'),
+            'B27': dados_funcionario.get('nome_mae'),
+
+            # --- Bloco de Endereço ---
+            #'': dados_funcionario.get('endereco'), # Adicione a célula correta aqui
+
+            # --- Bloco de Dados Funcionais Inferior ---
+            'B43': str(dados_funcionario.get('data_Admissao', '')),
+            'F43': str(dados_funcionario.get('data_posse', '')),
+            'I43': dados_funcionario.get('cargo'),
+            #'I27': dados_funcionario.get('venc_salario'), # Este campo pode estar faltando no seu banco
+            'I46': dados_funcionario.get('horario'),
+        }
+
+        # --- LÓGICA ATUALIZADA AQUI ---
+        # Itera sobre os dados e preenche as células
+        for celula_str, valor in mapeamento_celulas.items():
+            # Verifica se o valor é nulo, uma string vazia, ou uma string que só contém espaços
+            if valor is None or str(valor).strip() == '':
+                sheet[celula_str] = "não informado"
+            else:
+                sheet[celula_str] = valor
+
+        workbook.save(caminho_saida)
+        return True, None
+
+    except Exception as e:
+        print(f"Erro ao preencher o Excel: {e}")
+        if 'celula_str' in locals():
+             return False, f"Erro ao escrever na célula '{celula_str}'. Causa: {e}"
+        else:
+             return False, str(e)

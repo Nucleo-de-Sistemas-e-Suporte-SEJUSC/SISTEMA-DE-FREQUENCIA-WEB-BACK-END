@@ -1,15 +1,25 @@
 import os
 import uuid
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from conection_mysql import connect_mysql
-from docx import Document
-from utils.gerador_docx import preencher_documento
+from utils.gerador_excel import preencher_ficha_excel  # <-- Nossa nova função
+from utils.convert_to_pdf import convert_to_pdf       # <-- Sua função de conversão existente
 
 bp_gerar_ficha_funcional = Blueprint("bp_gerar_ficha_funcional", __name__)
+
+# Define as pastas necessárias
 UPLOADS_FOLDER = os.path.join(os.getcwd(), "uploads")
+TEMP_FOLDER = os.path.join(os.getcwd(), "temp_files") 
+
+# Garante que as pastas existam
+os.makedirs(UPLOADS_FOLDER, exist_ok=True)
+os.makedirs(TEMP_FOLDER, exist_ok=True)
 
 @bp_gerar_ficha_funcional.route("/api/servidores/<int:funcionario_id>/gerar-ficha-funcional", methods=["POST"])
 def gerar_ficha(funcionario_id):
+    conexao = None
+    cursor = None
+    temp_xlsx_path = None
     try:
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
@@ -19,73 +29,51 @@ def gerar_ficha(funcionario_id):
         if not funcionario:
             return jsonify({"erro": "Funcionário não encontrado"}), 404
 
-        template_path = "FICHA FUNCIONAL (1).docx"
+        template_path = "FICHA_FUNCIONAL_TEMPLATE.xlsx"  # Renomeie seu template para este nome
         if not os.path.exists(template_path):
-            return jsonify({"erro": "Template 'FICHA FUNCIONAL (1).docx' não encontrado."}), 500
+            return jsonify({"erro": f"Template '{template_path}' não encontrado na raiz do projeto."}), 500
+
+        # --- NOVO FLUXO COM EXCEL ---
+        # 1. Cria um caminho temporário para o Excel preenchido
+        temp_xlsx_name = f"{uuid.uuid4()}.xlsx"
+        temp_xlsx_path = os.path.join(TEMP_FOLDER, temp_xlsx_name)
+
+        # 2. Preenche o template Excel com os dados do funcionário
+        sucesso, erro = preencher_ficha_excel(template_path, funcionario, temp_xlsx_path)
+        if not sucesso:
+            return jsonify({"erro": "Falha ao preencher a planilha", "detalhe": erro}), 500
+
+        # 3. Converte o Excel preenchido para PDF, salvando em 'uploads'
+        pdf_path = convert_to_pdf(temp_xlsx_path, UPLOADS_FOLDER)
+        if not pdf_path:
+             return jsonify({"erro": "Falha ao converter o arquivo para PDF"}), 500
         
-        doc = Document(template_path)
+        # 4. Salva os dados do PDF no banco de dados
+        nome_original_pdf = f"Ficha_Funcional_{funcionario['nome'].replace(' ', '_')}.pdf"
+        nome_armazenado_pdf = os.path.basename(pdf_path)
 
-        # ------------------- INÍCIO DO CÓDIGO DE DIAGNÓSTICO -------------------
-        print("\n--- INICIANDO DIAGNÓSTICO DO DOCUMENTO ---")
-        print("--- PARÁGRAFOS PRINCIPAIS ---")
-        for i, p in enumerate(doc.paragraphs):
-            print(f"P{i}: '{p.text}'")
-
-        print("\n--- TEXTO DAS CÉLULAS DAS TABELAS ---")
-        for t_idx, table in enumerate(doc.tables):
-            for r_idx, row in enumerate(table.rows):
-                for c_idx, cell in enumerate(row.cells):
-                    for p_idx, p in enumerate(cell.paragraphs):
-                        print(f"T{t_idx}-R{r_idx}-C{c_idx}-P{p_idx}: '{p.text}'")
-        print("--- FIM DO DIAGNÓSTICO ---\n")
-        # -------------------- FIM DO CÓDIGO DE DIAGNÓSTICO --------------------
-
-        mapeamento = {
-            "CAMPO_NOME": funcionario.get("nome"),
-            "CAMPO_DATA_NASCIMENTO": str(funcionario.get("data_nascimento", "")),
-            "CAMPO_SEXO": funcionario.get("sexo"),
-            "CAMPO_ESTADO_CIVIL": funcionario.get("estado_civil"),
-            "CAMPO_NATURALIDADE": funcionario.get("naturalidade"),
-            "CAMPO_NACIONALidade": funcionario.get("nacionalidade"), # <-- Atenção aqui
-            "CAMPO_CPF": funcionario.get("cpf"),
-            "CAMPO_PIS": funcionario.get("pis"),
-            "CAMPO_IDENTIDADE": funcionario.get("identidade"),
-            "CAMPO_TITULO": funcionario.get("titulo_eleitor"),
-            "CAMPO_DATA_ADMISSAO": str(funcionario.get("data_Admissao", "")),
-            "CAMPO_CARGO": funcionario.get("cargo"),
-            "CAMPO_ENDERECO": funcionario.get("endereco"),
-            "CAMPO_PAI": funcionario.get("nome_pai"),
-            "CAMPO_MAE": funcionario.get("nome_mae"),
-            "CAMPO_SERVICO_MILITAR": funcionario.get("servico_militar"),
-            "CAMPO_CARTEIRA_PROF": funcionario.get("carteira_profissional"),
-            "CAMPO_DATA_POSSE": str(funcionario.get("data_posse", "")),
-        }
-        
-        preencher_documento(doc, mapeamento)
-
-        # O resto do código continua igual...
-        nome_original = f"Ficha_Funcional_{funcionario['nome'].replace(' ', '_')}.docx"
-        nome_unico = f"{uuid.uuid4()}.docx"
-        caminho_salvo = os.path.join(UPLOADS_FOLDER, nome_unico)
-        doc.save(caminho_salvo)
-
-        query_insert = """
+        query = """
             INSERT INTO documentos 
             (nome_original, nome_armazenado, caminho_arquivo, tipo_documento, funcionario_id)
             VALUES (%s, %s, %s, %s, %s)
         """
-        cursor.execute(query_insert, (nome_original, nome_unico, caminho_salvo, "Ficha Funcional", funcionario_id))
+        cursor.execute(query, (nome_original_pdf, nome_armazenado_pdf, pdf_path, "Ficha Funcional", funcionario_id))
         conexao.commit()
         documento_id = cursor.lastrowid
         
-        cursor.close()
-        conexao.close()
-
         return jsonify({
-            "mensagem": "Ficha Funcional gerada com sucesso!",
-            "documento_id": documento_id,
-            "caminho": caminho_salvo
+            "mensagem": "Ficha Funcional em PDF gerada com sucesso via Excel!",
+            "documento_id": documento_id
         }), 201
 
     except Exception as e:
-        return jsonify({"erro": f"Ocorreu um erro: {str(e)}"}), 500
+        return jsonify({"erro": f"Ocorreu um erro inesperado: {str(e)}"}), 500
+    
+    finally:
+        # 5. Limpa o arquivo .xlsx temporário, mesmo se ocorrer um erro
+        if temp_xlsx_path and os.path.exists(temp_xlsx_path):
+            os.remove(temp_xlsx_path)
+        if cursor:
+            cursor.close()
+        if conexao:
+            conexao.close()

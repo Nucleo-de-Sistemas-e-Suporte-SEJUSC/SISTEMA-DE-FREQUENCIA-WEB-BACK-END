@@ -1,44 +1,71 @@
-import os
 import subprocess
-import logging
+import os
+import uuid
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+def convert_to_pdf(input_path, output_folder):
+    """
+    Converte um arquivo (como .xlsx ou .docx) para PDF usando o LibreOffice.
 
-def convert_to_pdf(docx_path, pdf_path):
+    :param input_path: Caminho completo para o arquivo de entrada.
+    :param output_folder: Pasta onde o PDF será salvo.
+    :return: O caminho completo para o PDF gerado ou None em caso de falha.
+    """
+    if not os.path.exists(input_path):
+        print(f"Erro de conversão: Arquivo de entrada não encontrado em '{input_path}'")
+        return None
+
+    # Comando para executar a conversão via LibreOffice em modo "headless" (sem interface gráfica)
+    command = [
+        'soffice',
+        '--headless',
+        '--convert-to',
+        'pdf',
+        '--outdir',
+        output_folder,
+        input_path
+    ]
+
+    print(f"Executando comando de conversão: {' '.join(command)}")
+
     try:
-        docx_path = os.path.abspath(docx_path)
-        output_dir = os.path.dirname(os.path.abspath(pdf_path))
+        # Executa o comando e espera ele terminar
+        process = subprocess.run(command, check=True, capture_output=True, text=True, timeout=60)
         
-        if not os.path.exists(docx_path):
-            raise FileNotFoundError(f"Arquivo DOCX não encontrado: {docx_path}")
+        # Log de sucesso
+        print("Saída do LibreOffice (stdout):", process.stdout)
         
-        os.makedirs(output_dir, exist_ok=True)
+        # Descobre o nome do arquivo PDF gerado
+        input_filename = os.path.basename(input_path)
+        pdf_filename = os.path.splitext(input_filename)[0] + '.pdf'
+        pdf_filepath = os.path.join(output_folder, pdf_filename)
 
-        logger.info(f"Convertendo {docx_path} para PDF...")
-        
-        # Executa o LibreOffice em modo headless (sem interface gráfica)
-        subprocess.run([
-            "libreoffice",
-            "--headless",
-            "--convert-to", "pdf",
-            "--outdir", output_dir,
-            docx_path
-        ], check=True)
+        if os.path.exists(pdf_filepath):
+            # Renomeia para um nome único para evitar conflitos
+            unique_filename = f"{uuid.uuid4()}.pdf"
+            unique_filepath = os.path.join(output_folder, unique_filename)
+            os.rename(pdf_filepath, unique_filepath)
+            
+            print(f"Conversão para PDF bem-sucedida! Arquivo salvo em: {unique_filepath}")
+            return unique_filepath
+        else:
+            print("Erro de conversão: O arquivo PDF não foi encontrado após a execução do comando.")
+            print("Saída de erro do LibreOffice (stderr):", process.stderr)
+            return None
 
-        # Nome esperado do PDF (LibreOffice gera com mesmo nome)
-        generated_pdf = os.path.join(output_dir, os.path.splitext(os.path.basename(docx_path))[0] + ".pdf")
-        
-        # Renomeia se for diferente do pdf_path desejado
-        if generated_pdf != os.path.abspath(pdf_path):
-            os.rename(generated_pdf, pdf_path)
-        
-        logger.info(f"Conversão concluída com sucesso: {pdf_path}")
-        return True
-
+    except FileNotFoundError:
+        print("Erro de conversão: O comando 'soffice' não foi encontrado.")
+        print("Verifique se o LibreOffice está instalado e no PATH do sistema.")
+        return None
     except subprocess.CalledProcessError as e:
-        logger.error(f"Erro ao chamar o LibreOffice: {e}")
-        return False
+        print("Erro durante a execução do comando de conversão do LibreOffice.")
+        print(f"Comando: {e.cmd}")
+        print(f"Código de retorno: {e.returncode}")
+        print(f"Saída (stdout): {e.stdout}")
+        print(f"Erro (stderr): {e.stderr}")
+        return None
+    except subprocess.TimeoutExpired:
+        print("Erro de conversão: O processo do LibreOffice demorou demais e foi finalizado (timeout).")
+        return None
     except Exception as e:
-        logger.error(f"Falha na conversão: {str(e)}")
-        return False
+        print(f"Um erro inesperado ocorreu durante a conversão para PDF: {e}")
+        return None
