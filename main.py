@@ -36,6 +36,7 @@ from routes.documento_routes import bp_documentos
 from routes.send_documentos import bp_send_documentos
 from routes.send_ficha_funcional import bp_send_ficha_funcional
 from routes.gerar_ficha_funcional import bp_gerar_ficha_funcional 
+from routes.buscar_documentos import bp_buscar_documentos
 from auth import auth_bp, login_manager  # ✅ Importação correta
 import os
 
@@ -93,6 +94,7 @@ app.register_blueprint(bp_documentos)
 app.register_blueprint(bp_send_documentos)
 app.register_blueprint(bp_gerar_ficha_funcional)
 app.register_blueprint(bp_send_ficha_funcional)
+app.register_blueprint(bp_buscar_documentos) 
 @app.route("/")
 def home():
     return  "bem vindo ao sistema de rh "
