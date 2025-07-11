@@ -34,6 +34,7 @@ from routes.limpar_pasta_setor import bp_limpar_pasta_setor
 from routes.atualizar_estagiario import bp_atualizar_estagiario
 from routes.documento_routes import bp_documentos
 from routes.send_documentos import bp_send_documentos
+from routes.buscar_documentos import bp_buscar_documentos
 from auth import auth_bp, login_manager  # ✅ Importação correta
 import os
 
@@ -89,6 +90,7 @@ app.register_blueprint(bp_limpar_pasta_setor)
 app.register_blueprint(bp_atualizar_estagiario)
 app.register_blueprint(bp_documentos)
 app.register_blueprint(bp_send_documentos)
+app.register_blueprint(bp_buscar_documentos) 
 @app.route("/")
 def home():
     return  "bem vindo ao sistema de rh "
