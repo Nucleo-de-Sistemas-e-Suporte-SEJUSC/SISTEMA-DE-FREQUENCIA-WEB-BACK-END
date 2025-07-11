@@ -33,21 +33,45 @@ def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
             'I22': dados_funcionario.get('cpf'),
             'M22': dados_funcionario.get('identidade'),
             'R22': dados_funcionario.get('pis'),
-            #'L13': dados_funcionario.get('carteira_saude'), # Campo não está no banco
+            'V22': dados_funcionario.get('carteira_saude'), # Campo não está no banco
 
             # --- Bloco de Filiação ---
             'B26': dados_funcionario.get('nome_pai'),
             'B27': dados_funcionario.get('nome_mae'),
+            'C34': dados_funcionario.get('beneficiario'), # Campo não está no banco
+            'C35': dados_funcionario.get('beneficiario'),
+            'C36': dados_funcionario.get('beneficiario'),
+            'C37': dados_funcionario.get('beneficiario'),
+            'C38': dados_funcionario.get('beneficiario'),
+            'C39': dados_funcionario.get('beneficiario'),
+            'C40': dados_funcionario.get('beneficiario'),
+            'K34': dados_funcionario.get('beneficiario'),
+            'K35': dados_funcionario.get('beneficiario'),
+            'K36': dados_funcionario.get('beneficiario'),
+            'K37': dados_funcionario.get('beneficiario'),
+            'K38': dados_funcionario.get('beneficiario'),
+            'K39': dados_funcionario.get('beneficiario'),
+            'K40': dados_funcionario.get('beneficiario'),
+            'L34': dados_funcionario.get('beneficiario'),
+            'L35': dados_funcionario.get('beneficiario'),
+            'L36': dados_funcionario.get('beneficiario'),
+            'L37': dados_funcionario.get('beneficiario'),
+            'L38': dados_funcionario.get('beneficiario'),
+            'L39': dados_funcionario.get('beneficiario'),
+            'L40': dados_funcionario.get('beneficiario'),
 
             # --- Bloco de Endereço ---
-            #'': dados_funcionario.get('endereco'), # Adicione a célula correta aqui
+            'D30': dados_funcionario.get('endereco'), # Adicione a célula correta aqui
 
             # --- Bloco de Dados Funcionais Inferior ---
             'B43': str(dados_funcionario.get('data_Admissao', '')),
             'F43': str(dados_funcionario.get('data_posse', '')),
             'I43': dados_funcionario.get('cargo'),
-            #'I27': dados_funcionario.get('venc_salario'), # Este campo pode estar faltando no seu banco
+            'M43': dados_funcionario.get('venc_salario'), # Este campo pode estar faltando no seu banco
             'I46': dados_funcionario.get('horario'),
+            'B46': dados_funcionario.get('desligamento'),
+            'F46': str(dados_funcionario.get('inicio_atividades', '')),
+            'M46': str(dados_funcionario.get('descanso_semanal', '')),
         }
 
         # --- LÓGICA ATUALIZADA AQUI ---
