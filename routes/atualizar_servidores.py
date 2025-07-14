@@ -1,60 +1,79 @@
 from flask import jsonify, request, Blueprint
 from conection_mysql import connect_mysql
 from mysql.connector import Error
-from flask_login import login_required  # Importa diretamente do Flask-Login
-from decorador import roles_required   # Importa o decorador personalizado
-
+from flask_login import login_required
+from decorador import roles_required
 
 bp_atualizar_servidor = Blueprint('bp_atualizar_servidor', __name__)
 
-@bp_atualizar_servidor.route('/api/servidores/<int:id>', methods=['PUT'])
+@bp_atualizar_servidor.route('/api/servidores/<int:id>', methods=['PATCH']) 
 #@login_required
 #@roles_required('admin','editor')
 def atualizar_servidor(id):
+    conexao = None
+    cursor = None
     try:
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
         body = request.json
 
-        busca_se_existe_servidor = "SELECT * FROM funcionarios WHERE id = %s"
-        cursor.execute(busca_se_existe_servidor, (id,))
-        servidor = cursor.fetchone()
 
-        if not servidor:
+        cursor.execute("SELECT * FROM funcionarios WHERE id = %s", (id,))
+        if not cursor.fetchone():
             return jsonify({'erro': 'Servidor não encontrado'}), 404
 
-        # Lista de campos que podem ser atualizados
-        campos_permitidos = ['setor', 'nome', 'matricula', 'cargo', 'funcao', 'horario', 'horarioentrada', 'horariosaida', 'feriasinicio', 'feriasfinal','dataNascimento', 'sexo', 'estadoCivil', 'naturalidade', 'nacionalidade', 'identidade', 'tituloEleitor', 'cpf', 'pis', 'dataAdmissao']
-        
-        # Dicionário para armazenar os campos e valores que serão atualizados
-        campos_para_atualizar = {}
-        
-        # Verifica quais campos foram enviados no corpo da requisição
-        for campo in campos_permitidos:
-            if campo in body:
-                campos_para_atualizar[campo] = body[campo]
+    
+        if 'beneficiarios' in body and isinstance(body['beneficiarios'], list):
+            for ben in body['beneficiarios']:
+                beneficiario_id = ben.get('id')
+                
+                # --- Lógica de Deleção ---
+                if beneficiario_id and ben.get('deletar') is True:
+                    cursor.execute("DELETE FROM beneficiarios WHERE id = %s AND funcionario_id = %s", (beneficiario_id, id))
+                
+                # --- Lógica de Atualização ---
+                elif beneficiario_id:
+                    campos_ben = {k: v for k, v in ben.items() if k in ['nome', 'parentesco', 'data_nascimento']}
+                    if campos_ben:
+                        set_clause = ', '.join([f"{campo} = %s" for campo in campos_ben.keys()])
+                        valores = list(campos_ben.values())
+                        valores.append(beneficiario_id)
+                        valores.append(id)
+                        query_update = f"UPDATE beneficiarios SET {set_clause} WHERE id = %s AND funcionario_id = %s"
+                        cursor.execute(query_update, valores)
+                
+                # --- Lógica de Criação ---
+                elif not beneficiario_id and 'nome' in ben:
+                    query_insert = """
+                        INSERT INTO beneficiarios (nome, parentesco, data_nascimento, funcionario_id) 
+                        VALUES (%s, %s, %s, %s)
+                    """
+                    cursor.execute(query_insert, (ben.get('nome'), ben.get('parentesco'), ben.get('data_nascimento'), id))
 
-        # Se não houver campos para atualizar, retorna um erro
-        if not campos_para_atualizar:
-            return jsonify({'erro': 'Nenhum campo válido para atualizar foi fornecido'}), 400
 
-        # Constrói a query SQL dinamicamente
-        set_clause = ', '.join([f"{campo} = %s" for campo in campos_para_atualizar.keys()])
-        valores = list(campos_para_atualizar.values())
-        valores.append(id)  # Adiciona o ID no final para a cláusula WHERE
-
-        atualizar_dados_servidor = f"""
-            UPDATE funcionarios
-            SET {set_clause}
-            WHERE id = %s
-        """
+        campos_permitidos = ['setor', 'nome', 'matricula', 'cargo', 'funcao', 'horario', 'horarioentrada', 'horariosaida', 'feriasinicio', 'feriasfinal','data_nascimento', 'sexo', 'estado_civil', 'naturalidade', 'nacionalidade', 'identidade', 'titulo_eleitor', 'cpf', 'pis', 'data_Admissao', 'endereco', 'nome_pai', 'nome_mae', 'servico_militar', 'carteira_profissional', 'data_posse', 'venc_salario', 'desligamento', 'inicio_atividades', 'descanso_semanal']
         
-        cursor.execute(atualizar_dados_servidor, valores)
+        campos_para_atualizar = {campo: body[campo] for campo in campos_permitidos if campo in body}
+
+        if campos_para_atualizar:
+            set_clause = ', '.join([f"{campo} = %s" for campo in campos_para_atualizar.keys()])
+            valores = list(campos_para_atualizar.values())
+            valores.append(id)
+            query_atualizar_funcionario = f"UPDATE funcionarios SET {set_clause} WHERE id = %s"
+            cursor.execute(query_atualizar_funcionario, valores)
+
+        # 4. FINALIZA A TRANSAÇÃO
         conexao.commit()
-        conexao.close()
-
-        # Retorna os campos atualizados
-        return jsonify({'servidor': campos_para_atualizar}), 200
+        
+        return jsonify({'mensagem': 'Servidor atualizado com sucesso'}), 200
 
     except Exception as exception:
-        return jsonify({'erro': f'Erro ao conectar ao banco de dados: {str(exception)}'}), 500
+        if conexao:
+            conexao.rollback()
+        return jsonify({'erro': f'Ocorreu um erro: {str(exception)}'}), 500
+    
+    finally:
+        if cursor:
+            cursor.close()
+        if conexao:
+            conexao.close()

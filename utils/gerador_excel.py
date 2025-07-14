@@ -6,102 +6,64 @@ def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
         workbook = openpyxl.load_workbook(template_path)
         sheet = workbook.active
 
-        mapeamento_celulas = {
-            # --- Bloco Superior ---
-            'AA7': dados_funcionario.get('matricula'),
-            'F13': dados_funcionario.get('nome'),
-
-            # --- Linha de Dados Pessoais 1 ---
-            'B19': str(dados_funcionario.get('data_nascimento', '')),
-            'F19': dados_funcionario.get('estado_civil'),
-            'I19': dados_funcionario.get('sexo'),
-            'M19': dados_funcionario.get('naturalidade'),
-            'R19': dados_funcionario.get('nacionalidade'),
-            'V19': dados_funcionario.get('carteira_profissional'),
-
-            # --- Linha de Dados Pessoais 2 ---
-            'B22': dados_funcionario.get('servico_militar'),
-            'F22': dados_funcionario.get('titulo_eleitor'),
-            'I22': dados_funcionario.get('cpf'),
-            'M22': dados_funcionario.get('identidade'),
-            'R22': dados_funcionario.get('pis'),
-            'V22': dados_funcionario.get('carteira_saude'), # Campo não está no banco
-            'F16': dados_funcionario.get('campo_mudança_nome'),
-
-            # --- Bloco de Filiação ---
-            'B26': dados_funcionario.get('nome_pai'),
-            'B27': dados_funcionario.get('nome_mae'),
-            'C34': dados_funcionario.get('campo_nome_beneficiario'), # Campo não está no banco
-            'C35': dados_funcionario.get('campo_nome_beneficiario'),
-            'C36': dados_funcionario.get('campo_nome_beneficiario'),
-            'C37': dados_funcionario.get('campo_nome_beneficiario'),
-            'C38': dados_funcionario.get('campo_nome_beneficiario'),
-            'C39': dados_funcionario.get('campo_nome_beneficiario'),
-            'C40': dados_funcionario.get('campo_nome_beneficiario'),
-            'K34': dados_funcionario.get('campo_parentesco'),
-            'K35': dados_funcionario.get('campo_parentesco'),
-            'K36': dados_funcionario.get('campo_parentesco'),
-            'K37': dados_funcionario.get('campo_parentesco'),
-            'K38': dados_funcionario.get('campo_parentesco'),
-            'K39': dados_funcionario.get('campo_parentesco'),
-            'K40': dados_funcionario.get('campo_parentesco'),
-            'L34': dados_funcionario.get('campo_nascimento'),
-            'L35': dados_funcionario.get('campo_nascimento'),
-            'L36': dados_funcionario.get('campo_nascimento'),
-            'L37': dados_funcionario.get('campo_nascimento'),
-            'L38': dados_funcionario.get('campo_nascimento'),
-            'L39': dados_funcionario.get('campo_nascimento'),
-            'L40': dados_funcionario.get('campo_nascimento'),
-            
-            
-            
-            'P34': dados_funcionario.get('campo_nome_beneficiario_2'),
-            'P35': dados_funcionario.get('campo_nome_beneficiario_2'),
-            'P36': dados_funcionario.get('campo_nome_beneficiario_2'),
-            'P37': dados_funcionario.get('campo_nome_beneficiario_2'),
-            'P38': dados_funcionario.get('campo_nome_beneficiario_2'),
-            'P39': dados_funcionario.get('campo_nome_beneficiario_2'),
-            'P40': dados_funcionario.get('campo_nome_beneficiario_2'),
-            'K35': dados_funcionario.get('campo_nome_beneficiario_2'),
-            'AA34': dados_funcionario.get('campo_parentesco_2'),
-            'AA35': dados_funcionario.get('campo_parentesco_2'),
-            'AA36': dados_funcionario.get('campo_parentesco_2'),
-            'AA37': dados_funcionario.get('campo_parentesco_2'),
-            'AA38': dados_funcionario.get('campo_parentesco_2'),
-            'AA39': dados_funcionario.get('campo_parentesco_2'),
-            'AA40': dados_funcionario.get('campo_parentesco_2'),
-            'AB34': dados_funcionario.get('campo_nascimento_2'),
-            'AB35': dados_funcionario.get('campo_nascimento_2'),
-            'AB36': dados_funcionario.get('campo_nascimento_2'),
-            'AB37': dados_funcionario.get('campo_nascimento_2'),
-            'AB38': dados_funcionario.get('campo_nascimento_2'),
-            'AB39': dados_funcionario.get('campo_nascimento_2'),
-            'AB40': dados_funcionario.get('campo_nascimento_2'),
-            # --- Bloco de Endereço ---
-            'D30': dados_funcionario.get('endereco'), # Adicione a célula correta aqui
-
-            # --- Bloco de Dados Funcionais Inferior ---
-            'B43': str(dados_funcionario.get('data_Admissao', '')),
-            'F43': str(dados_funcionario.get('data_posse', '')),
-            'I43': dados_funcionario.get('cargo'),
-            'M43': dados_funcionario.get('venc_salario'), # Este campo pode estar faltando no seu banco
-            'I46': dados_funcionario.get('horario'),
-            'B46': dados_funcionario.get('desligamento'),
-            'F46': str(dados_funcionario.get('inicio_atividades', '')),
-            'M46': str(dados_funcionario.get('descanso_semanal', '')),
+        # PARTE 1: MAPEAMENTO PARA CAMPOS ÚNICOS
+        mapeamento_campos_unicos = {
+            'AA7': dados_funcionario.get('matricula'), 'F13': dados_funcionario.get('nome'),
+            'B19': str(dados_funcionario.get('data_nascimento', '')), 'F19': dados_funcionario.get('estado_civil'),
+            'I19': dados_funcionario.get('sexo'), 'M19': dados_funcionario.get('naturalidade'),
+            'R19': dados_funcionario.get('nacionalidade'), 'V19': dados_funcionario.get('carteira_profissional'),
+            'B22': dados_funcionario.get('servico_militar'), 'F22': dados_funcionario.get('titulo_eleitor'),
+            'I22': dados_funcionario.get('cpf'), 'M22': dados_funcionario.get('identidade'),
+            'R22': dados_funcionario.get('pis'), 'V22': dados_funcionario.get('carteira_saude'),
+            'F16': dados_funcionario.get('campo_mudança_nome'), 'B26': dados_funcionario.get('nome_pai'),
+            'B27': dados_funcionario.get('nome_mae'), 'D30': dados_funcionario.get('endereco'),
+            'B43': str(dados_funcionario.get('data_Admissao', '')), 'F43': str(dados_funcionario.get('data_posse', '')),
+            'I43': dados_funcionario.get('cargo'), 'M43': dados_funcionario.get('venc_salario'),
+            'I46': dados_funcionario.get('horario'), 'B46': dados_funcionario.get('desligamento'),
+            'F46': str(dados_funcionario.get('inicio_atividades', '')), 'M46': str(dados_funcionario.get('descanso_semanal', '')),
         }
         
         estilo_centralizado = Alignment(horizontal='center', vertical='center')
 
-        # --- LÓGICA ATUALIZADA AQUI ---
-        # Itera sobre os dados e preenche as células
-        for celula_str, valor in mapeamento_celulas.items():
-            # Verifica se o valor é nulo, uma string vazia, ou uma string que só contém espaços
+        # Preenche e centraliza os campos únicos
+        for celula_str, valor in mapeamento_campos_unicos.items():
             if valor is None or str(valor).strip() == '':
                 sheet[celula_str] = "não informado"
             else:
                 sheet[celula_str] = valor
-        sheet[celula_str].alignment = estilo_centralizado
+            sheet[celula_str].alignment = estilo_centralizado
+
+        # PARTE 2: LÓGICA AUTOMATIZADA PARA AS DUAS TABELAS DE BENEFICIÁRIOS
+        beneficiarios = dados_funcionario.get('beneficiarios', [])
+        
+        # Tabela 1 (Colunas C, K, L)
+        linha_inicial_1 = 34
+        for i in range(7): # Para as 7 linhas da primeira tabela
+            if i < len(beneficiarios):
+                beneficiario = beneficiarios[i]
+                sheet[f'C{linha_inicial_1 + i}'] = beneficiario.get('nome', 'não informado')
+                sheet[f'K{linha_inicial_1 + i}'] = beneficiario.get('parentesco', 'não informado')
+                sheet[f'L{linha_inicial_1 + i}'] = str(beneficiario.get('data_nascimento', 'não informado'))
+            else: # Limpa as linhas restantes se não houver beneficiários suficientes
+                sheet[f'C{linha_inicial_1 + i}'] = ""
+                sheet[f'K{linha_inicial_1 + i}'] = ""
+                sheet[f'L{linha_inicial_1 + i}'] = ""
+        
+        # Tabela 2 (Colunas P, AA, AB)
+        linha_inicial_2 = 34
+        # Começa a preencher a partir do 8º beneficiário (índice 7)
+        beneficiarios_tabela_2 = beneficiarios[7:] 
+        for i in range(7): # Para as 7 linhas da segunda tabela
+            if i < len(beneficiarios_tabela_2):
+                beneficiario = beneficiarios_tabela_2[i]
+                sheet[f'P{linha_inicial_2 + i}'] = beneficiario.get('nome', 'não informado')
+                sheet[f'AA{linha_inicial_2 + i}'] = beneficiario.get('parentesco', 'não informado')
+                sheet[f'AB{linha_inicial_2 + i}'] = str(beneficiario.get('data_nascimento', 'não informado'))
+            else: # Limpa as linhas restantes
+                sheet[f'P{linha_inicial_2 + i}'] = ""
+                sheet[f'AA{linha_inicial_2 + i}'] = ""
+                sheet[f'AB{linha_inicial_2 + i}'] = ""
+
 
         workbook.save(caminho_saida)
         return True, None
