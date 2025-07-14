@@ -1,15 +1,7 @@
 import openpyxl
+from openpyxl.styles import Alignment 
 
 def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
-    """
-    Preenche a Ficha Funcional a partir de um template Excel (.xlsx).
-    Versão final com tratamento de campos vazios.
-
-    :param template_path: Caminho para o template .xlsx.
-    :param dados_funcionario: Dicionário com os dados do funcionário.
-    :param caminho_saida: Onde salvar o novo arquivo .xlsx preenchido.
-    :return: Tupla (sucesso_boolean, erro_mensagem_string)
-    """
     try:
         workbook = openpyxl.load_workbook(template_path)
         sheet = workbook.active
@@ -34,6 +26,7 @@ def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
             'M22': dados_funcionario.get('identidade'),
             'R22': dados_funcionario.get('pis'),
             'V22': dados_funcionario.get('carteira_saude'), # Campo não está no banco
+            'F16': dados_funcionario.get('campo_mudança_nome'),
 
             # --- Bloco de Filiação ---
             'B26': dados_funcionario.get('nome_pai'),
@@ -73,6 +66,8 @@ def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
             'F46': str(dados_funcionario.get('inicio_atividades', '')),
             'M46': str(dados_funcionario.get('descanso_semanal', '')),
         }
+        
+        estilo_centralizado = Alignment(horizontal='center', vertical='center')
 
         # --- LÓGICA ATUALIZADA AQUI ---
         # Itera sobre os dados e preenche as células
@@ -82,6 +77,7 @@ def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
                 sheet[celula_str] = "não informado"
             else:
                 sheet[celula_str] = valor
+        sheet[celula_str].alignment = estilo_centralizado
 
         workbook.save(caminho_saida)
         return True, None
