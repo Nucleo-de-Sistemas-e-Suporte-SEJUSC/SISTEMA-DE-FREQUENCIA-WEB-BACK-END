@@ -22,25 +22,24 @@ def gerar_ficha(funcionario_id):
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
-        # 1. BUSCA OS DADOS PRINCIPAIS DO FUNCIONÁRIO
         cursor.execute("SELECT * FROM funcionarios WHERE id = %s", (funcionario_id,))
         funcionario = cursor.fetchone()
 
         if not funcionario:
             return jsonify({"erro": "Funcionário não encontrado"}), 404
 
-        # 2. (NOVA LÓGICA) BUSCA A LISTA DE BENEFICIÁRIOS
+
         cursor.execute("SELECT nome, parentesco, data_nascimento FROM beneficiarios WHERE funcionario_id = %s", (funcionario_id,))
         beneficiarios_list = cursor.fetchall()
         
-        # Adiciona a lista de beneficiários ao dicionário do funcionário
+       
         funcionario['beneficiarios'] = beneficiarios_list
 
         template_path = "FICHA_FUNCIONAL_TEMPLATE.xlsx"
         if not os.path.exists(template_path):
             return jsonify({"erro": f"Template '{template_path}' não encontrado."}), 500
 
-        # O resto do fluxo continua o mesmo...
+      
         temp_xlsx_name = f"{uuid.uuid4()}.xlsx"
         temp_xlsx_path = os.path.join(TEMP_FOLDER, temp_xlsx_name)
 

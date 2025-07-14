@@ -27,11 +27,11 @@ def atualizar_servidor(id):
             for ben in body['beneficiarios']:
                 beneficiario_id = ben.get('id')
                 
-                # --- Lógica de Deleção ---
+           
                 if beneficiario_id and ben.get('deletar') is True:
                     cursor.execute("DELETE FROM beneficiarios WHERE id = %s AND funcionario_id = %s", (beneficiario_id, id))
                 
-                # --- Lógica de Atualização ---
+          
                 elif beneficiario_id:
                     campos_ben = {k: v for k, v in ben.items() if k in ['nome', 'parentesco', 'data_nascimento']}
                     if campos_ben:
@@ -42,7 +42,7 @@ def atualizar_servidor(id):
                         query_update = f"UPDATE beneficiarios SET {set_clause} WHERE id = %s AND funcionario_id = %s"
                         cursor.execute(query_update, valores)
                 
-                # --- Lógica de Criação ---
+          
                 elif not beneficiario_id and 'nome' in ben:
                     query_insert = """
                         INSERT INTO beneficiarios (nome, parentesco, data_nascimento, funcionario_id) 
@@ -62,7 +62,7 @@ def atualizar_servidor(id):
             query_atualizar_funcionario = f"UPDATE funcionarios SET {set_clause} WHERE id = %s"
             cursor.execute(query_atualizar_funcionario, valores)
 
-        # 4. FINALIZA A TRANSAÇÃO
+        
         conexao.commit()
         
         return jsonify({'mensagem': 'Servidor atualizado com sucesso'}), 200
