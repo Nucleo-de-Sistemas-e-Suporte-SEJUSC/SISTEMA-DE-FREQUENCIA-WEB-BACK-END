@@ -23,30 +23,17 @@ def formatar_data_por_extenso(data_obj):
     return f"{dia} de {mes} de {ano}"
 
 def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
-    """
-    Preenche a Ficha Funcional completa a partir de um template Excel (.xlsx),
-    incluindo múltiplas abas e formatações específicas.
 
-    :param template_path: Caminho para o template .xlsx.
-    :param dados_funcionario: Dicionário com os dados do funcionário e a lista de beneficiários.
-    :param caminho_saida: Onde salvar o novo arquivo .xlsx preenchido.
-    :return: Tupla (sucesso_boolean, erro_mensagem_string)
-    """
     try:
         workbook = openpyxl.load_workbook(template_path)
         
-        # --- ESTILOS DE ALINHAMENTO ---
         estilo_centralizado = Alignment(horizontal='center', vertical='center', wrap_text=True)
         estilo_esquerda = Alignment(horizontal='left', vertical='center', wrap_text=True)
 
-        # ======================================================================
-        # --- ABA 1: FRENTE ---
-        # ======================================================================
-        
-        # Seleciona a primeira aba pelo nome. Ajuste se o nome for diferente.
+      
         sheet_frente = workbook["FRENTE"]
 
-        # Mapeamento dos campos únicos da primeira página
+      
         mapeamento_frente = {
             'AA7': dados_funcionario.get('matricula'), 'F13': dados_funcionario.get('nome'),
             'B19': dados_funcionario.get('data_nascimento'), 'F19': dados_funcionario.get('estado_civil'),
@@ -65,7 +52,7 @@ def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
         
         celulas_de_data_frente = ['B19', 'B43', 'F43', 'F46']
 
-        # Preenche os campos únicos da aba "FRENTE"
+     
         for celula_str, valor in mapeamento_frente.items():
             valor_final = valor
             if celula_str in celulas_de_data_frente and isinstance(valor, (datetime, date)):
@@ -78,7 +65,6 @@ def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
             
             sheet_frente[celula_str].alignment = estilo_esquerda if celula_str in ['F13', 'F16'] else estilo_centralizado
 
-        # Preenche as duas tabelas de beneficiários na aba "FRENTE"
         beneficiarios = dados_funcionario.get('beneficiarios', [])
         tabelas_beneficiarios = [
             {'colunas': {'nome': 'C', 'parentesco': 'K', 'nascimento': 'L'}, 'start_index': 0},
@@ -105,18 +91,14 @@ def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
                     sheet_frente[f"{tabela['colunas']['nascimento']}{linha_inicial + i}"] = ""
 
 
-        # ======================================================================
-        # --- ABA 2: OUTRAS ANOTAÇÕES ---
-        # ======================================================================
-        
-        # Seleciona a segunda aba pelo nome. Ajuste se o nome for diferente.
+   
         sheet_anotacoes = workbook["OUTRAS ANOTAÇÕES"]
         
         data_admissao_extenso = formatar_data_por_extenso(dados_funcionario.get('data_Admissao'))
-        # Supondo que você tenha um campo 'data_publicacao' no seu banco
+       
         data_publicacao_extenso = formatar_data_por_extenso(dados_funcionario.get('data_publicacao'))
 
-        # IMPORTANTE: Use as células corretas (canto superior esquerdo)
+  
         mapeamento_anotacoes = {
             'A2': dados_funcionario.get('nome'),      # Exemplo
             'B4': dados_funcionario.get('cargo'),      # Exemplo
@@ -124,15 +106,14 @@ def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
             'G3': data_admissao_extenso.upper(),              # Exemplo
         }
 
-        # --- LÓGICA DE PREENCHIMENTO E ALINHAMENTO CORRIGIDA ---
+
         for celula_str, valor in mapeamento_anotacoes.items():
             if valor is None or str(valor).strip() == '':
                  sheet_anotacoes[celula_str] = "não informado"
             else:
                  sheet_anotacoes[celula_str] = str(valor)
             
-            # Aplica o estilo de alinhamento desejado. 
-            # Para a maioria dos textos longos, o alinhamento à esquerda com quebra de linha é o ideal.
+          
             sheet_anotacoes[celula_str].alignment = estilo_esquerda
 
         workbook.save(caminho_saida)
