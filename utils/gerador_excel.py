@@ -17,7 +17,7 @@ def formatar_data_por_extenso(data_obj):
     ]
     
     dia = data_obj.day
-    mes = meses[data_obj.month - 1] # Pega o nome do mês (índice 0-11)
+    mes = meses[data_obj.month - 1]
     ano = data_obj.year
     
     return f"{dia} de {mes} de {ano}"
