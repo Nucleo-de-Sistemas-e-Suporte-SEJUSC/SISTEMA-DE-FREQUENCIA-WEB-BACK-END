@@ -24,9 +24,7 @@ bp_converte_servidor_pdf = Blueprint('bp_converte_servidor_pdf', __name__)
 
 
 def set_cell_background(cell, color_hex):
-    """
-    Define a cor de fundo da célula (color_hex no formato 'RRGGBB', ex: 'B7DEE8' para azul claro).
-    """
+  
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     shd = OxmlElement('w:shd')
@@ -89,51 +87,45 @@ def limpa_nome(nome):
 
 
 def formatar_horario_para_hh_mm_v2(valor_horario):
-    """
-    Formata um valor de horário para o formato HH:MM, removendo os segundos.
-    """
-    if not valor_horario:  # Se for None, string vazia, etc.
+ 
+    if not valor_horario: 
         return ''
 
-    # Caso 1: Se for um objeto datetime.time
+   
     if isinstance(valor_horario, time):
         return valor_horario.strftime('%H:%M')
 
-    # Caso 2: Se for um objeto datetime.timedelta (comum de bancos de dados para colunas TIME)
+   
     if isinstance(valor_horario, timedelta):
         total_seconds = int(valor_horario.total_seconds())
-        # Ignora dias, foca apenas na parte de tempo do dia
-        if total_seconds < 0: # Lida com timedeltas negativos, se aplicável
-            # Você pode querer um tratamento específico aqui, por ex., '' ou erro
-            # Para simplificar, vamos assumir horas e minutos a partir de 0 se for negativo
-            # ou tratar como 00:00. A lógica exata pode depender do seu caso de uso.
-            # Exemplo: tratar como 00:00 se negativo ou converter para positivo
-            # Para este exemplo, vamos apenas calcular com base no valor absoluto.
+       
+        if total_seconds < 0: 
+        
             total_seconds = abs(total_seconds)
 
         hours = (total_seconds // 3600) % 24 # Garante que as horas fiquem dentro de 0-23
         minutes = (total_seconds % 3600) // 60
         return f"{hours:02}:{minutes:02}"
 
-    # Caso 3: Se for uma string
+ 
     if isinstance(valor_horario, str):
         try:
-            # Tenta primeiro como HH:MM:SS
+           
             if valor_horario.count(':') == 2:
                 dt_obj = datetime.strptime(valor_horario, '%H:%M:%S')
                 return dt_obj.strftime('%H:%M')
-            # Depois como HH:MM
+           
             elif valor_horario.count(':') == 1:
                 dt_obj = datetime.strptime(valor_horario, '%H:%M')
-                return dt_obj.strftime('%H:%M') # Já está no formato, mas re-formata para garantir
+                return dt_obj.strftime('%H:%M') 
             else:
-                # Se não for um formato de tempo reconhecido, retorna a string original
+               
                 return valor_horario
         except ValueError:
-            # Se a conversão da string falhar
-            return valor_horario # Retorna a string original
+          
+            return valor_horario 
 
-    # Fallback: Se não for nenhum dos tipos acima, tenta converter para string
+   
     return str(valor_horario)
 
 @bp_converte_servidor_pdf.route('/api/servidores/pdf', methods=['POST'])
@@ -179,7 +171,7 @@ def converte_servidor_pdf():
             doc = Document(template_path)
 
             cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario, feriados_do_mes, pontos_facultativos_mes)
-            # Formatar horário
+          
             troca_de_dados = {
             "CAMPO SETOR": funcionario['setor'],
             "CAMPO MÊS": mes_por_extenso,
@@ -209,13 +201,13 @@ def converte_servidor_pdf():
 
             arquivos_gerados.append(pdf_path)
 
-        # Criar ZIP com todos os PDFs
+     
         zip_path = os.path.abspath(f"setor/frequencias_{mes_por_extenso}.zip")
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for pdf in arquivos_gerados:
                 zipf.write(pdf, os.path.basename(pdf))
 
-        # Salvar caminho do ZIP no banco
+ 
         cursor.execute(
             "INSERT INTO arquivos_zip (mes, caminho_zip, tipo) VALUES (%s, %s, %s)",
             (mes_por_extenso, zip_path, 'servidores')
@@ -243,11 +235,8 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
         print("AVISO: Nenhum tabela encontrada no documento.")
         return
     
-    table = doc.tables[0] # Assume-se que a primeira tabela é a de frequência
+    table = doc.tables[0] 
 
-    # 1. Aplicar formatação base em todas as linhas existentes (como no seu código original)
-    # Esta formatação pode ser muito genérica; idealmente, o template já teria os estilos corretos
-    # para cabeçalhos vs. dados, mas vamos manter sua lógica original por enquanto.
     for row in table.rows:
         row.height = Cm(0.5)
         row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
@@ -259,63 +248,53 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                     run.font.size = Pt(7)
                     run.font.bold = False
 
-    # 2. Ajustar o número de linhas na tabela para corresponder à quantidade_dias_no_mes
-    # Linhas de dados necessárias = quantidade_dias_no_mes
-    # Total de linhas que a tabela deve ter = linha_inicial (cabeçalho) + quantidade_dias_no_mes
     target_total_rows_in_table = linha_inicial + quantidade_dias_no_mes
 
-    # Remover linhas excedentes do final da tabela
+
     while len(table.rows) > target_total_rows_in_table:
-        row_to_delete = table.rows[-1] # Pega a última linha da tabela
+        row_to_delete = table.rows[-1] 
         tbl_element = table._tbl
         tr_element = row_to_delete._tr
         tbl_element.remove(tr_element)
         print(f"INFO: Linha excedente removida. Total de linhas agora: {len(table.rows)}")
 
-    # Adicionar linhas se estiverem faltando
+   
     while len(table.rows) < target_total_rows_in_table:
         new_row = table.add_row()
-        new_row.height = Cm(0.5) # Aplicar altura padrão às novas linhas
+        new_row.height = Cm(0.5) 
         new_row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-        # Garante que as células da nova linha tenham parágrafos formatados
+
         for cell in new_row.cells:
-            # Assegura que existe pelo menos um parágrafo e o alinha
+
             p = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
             p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-            # Pode-se definir a fonte padrão para o parágrafo ou para um run vazio aqui, se necessário
-            # Mas geralmente o estilo da tabela ou a formatação do conteúdo adicionado depois cuidará disso.
+       
         print(f"INFO: Linha faltante adicionada. Total de linhas agora: {len(table.rows)}")
 
-    # 3. Preencher as linhas de dados (seu código original a partir daqui)
-    # Defina pontos_facultativos antes do loop, por exemplo, como uma lista vazia ou conforme sua lógica
-    #pontos_facultativos_mes = []  # Substitua por sua lógica para obter pontos facultativos, se necessário
+
 
     for i in range(quantidade_dias_no_mes):
         dia = i + 1
-        # Agora é seguro acessar table.rows[linha_inicial + i]
+     
         row = table.rows[linha_inicial + i]
-        data_atual = date(ano, mes_numerico, dia) # Use o nome data_atual como no seu código
-        dia_semana = pega_final_de_semana(ano, mes_numerico, dia) # Assume que esta função existe
-
+        data_atual = date(ano, mes_numerico, dia) 
+        dia_semana = pega_final_de_semana(ano, mes_numerico, dia) 
         # Limpeza das células da linha atual antes de preencher
         for cell in row.cells:
-            cell.text = "" # Limpa o conteúdo principal da célula (primeiro parágrafo)
-            for paragraph in cell.paragraphs: # Itera sobre todos os parágrafos
-                paragraph.clear() # Limpa todos os 'runs' (texto formatado) de cada parágrafo
-                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER # Garante o alinhamento
+            cell.text = "" 
+            for paragraph in cell.paragraphs: 
+                paragraph.clear()
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-        # Preencher número do dia
+     
         dia_cell = row.cells[0]
-        # Garante que há um parágrafo para adicionar o run
+     
         dia_paragraph = dia_cell.paragraphs[0] if dia_cell.paragraphs else dia_cell.add_paragraph()
-        dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER # Reafirma o alinhamento se for um novo parágrafo
+        dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER 
         dia_run = dia_paragraph.add_run(str(dia))
         dia_run.font.name = "Calibri"
         dia_run.font.size = Pt(8)
-        # dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER # Já definido
-
-        # Lógica para Sábados, Domingos, Feriados e Férias
-        # A ordem das suas verificações originais define a prioridade (a última condição que sobrescreve cell.text vence)
+      
         
         texto_status = "" # Para Sábado/Domingo
 
@@ -324,23 +303,22 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
         elif dia_semana == 6:
             texto_status = "DOMINGO"
 
-        if texto_status: # Escreve SÁBADO ou DOMINGO
+        if texto_status: 
             set_row_background(row, 'C5E0B4') # VERDE
-            for j in [2, 5, 9, 13]: # Seus índices de coluna originais
+            for j in [2, 5, 9, 13]: 
                 if j < len(row.cells):
                     cell = row.cells[j]
-                    cell.text = texto_status # Define o texto, limpando parágrafos anteriores
-                    # Reaplicar formatação após cell.text
+                    cell.text = texto_status
                     for paragraph in cell.paragraphs:
                         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-                        for run in paragraph.runs: # O texto agora está em um ou mais runs
+                        for run in paragraph.runs: 
                             run.font.bold = True
-                            run.font.name = "Calibri" # Garantir consistência
-                            run.font.size = Pt(7)     # Garantir consistência
+                            run.font.name = "Calibri" 
+                            run.font.size = Pt(7)    
                 else:
                     print(f"AVISO: Índice de coluna {j} para S/D fora dos limites.")
 
-        # Corrigido: bloco corretamente indentado e pontos_facultativos definido
+     
         if data_atual in pontos_facultativos and dia_semana not in [5, 6]:
             set_row_background(row, 'C5E0B4')  # 
             for j in [2, 5, 9, 13]:
@@ -356,7 +334,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                 else:
                     print(f"AVISO: Índice de coluna {j} para PONTO FACULTATIVO fora dos limites.")
 
-        # Fer (exceto se for sábado ou domingo) - sobrescreve células se for o caso
+
         elif data_atual in feriados and dia_semana not in [5, 6]:
             set_row_background(row, 'C5E0B4') # VERDE
             for j in [2, 5, 9, 13]:

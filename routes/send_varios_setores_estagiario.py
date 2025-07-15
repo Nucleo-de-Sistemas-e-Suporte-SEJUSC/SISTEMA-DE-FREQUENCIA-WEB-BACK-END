@@ -11,8 +11,6 @@ def download_zip_multiestagiarios_estagiarios(mes): # Função renomeada
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
-        # Busca o ZIP mais recente de multiestagiarios para o mês
-        # Nota: setor é 'multiestagiarios' e tipo é 'multiestagiarios' conforme a lógica de geração
         cursor.execute(
             "SELECT caminho_zip FROM arquivos_zip WHERE mes=%s AND tipo='multiestagiarios_geral' AND setor='multiestagiarios' ORDER BY id DESC LIMIT 1",
             (mes_formatado,)
@@ -38,10 +36,7 @@ def download_zip_multiestagiarios_estagiarios(mes): # Função renomeada
                 'dados_banco': result
             }), 404
 
-        download_name = os.path.basename(zip_path_verified) # Usa o nome real do arquivo do caminho
-        # Ou, se você quiser um esquema de nomenclatura consistente para download:
-        # download_name = f'frequencias_multissetores_estagiarios_{mes_formatado}.zip'
-
+        download_name = os.path.basename(zip_path_verified) 
         if conexao.is_connected():
             conexao.close()
 

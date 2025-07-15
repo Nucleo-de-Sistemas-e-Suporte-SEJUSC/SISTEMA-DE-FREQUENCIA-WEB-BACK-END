@@ -13,7 +13,7 @@ def send_ficha_funcional(documento_id):
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
         
-        # Busca o documento, garantindo que seja do tipo "Ficha Funcional"
+ 
         query = """
             SELECT caminho_arquivo, nome_original FROM documentos 
             WHERE id = %s AND tipo_documento = 'Ficha Funcional'

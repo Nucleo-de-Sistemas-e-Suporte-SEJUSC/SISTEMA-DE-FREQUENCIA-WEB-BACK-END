@@ -25,9 +25,7 @@ bp_converte_estagiario_pdf = Blueprint('bp_converte_estagiario_pdf', __name__)
 
 
 def set_cell_background(cell, color_hex):
-    """
-    Define a cor de fundo da célula (color_hex no formato 'RRGGBB', ex: 'B7DEE8' para azul claro).
-    """
+
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
     shd = OxmlElement('w:shd')
@@ -86,51 +84,44 @@ def pegar_feriados_mes(ano, mes, estado='AM'):
 
 
 def formatar_horario_para_hh_mm_v2(valor_horario):
-    """
-    Formata um valor de horário para o formato HH:MM, removendo os segundos.
-    """
-    if not valor_horario:  # Se for None, string vazia, etc.
+
+    if not valor_horario:  
         return ''
 
-    # Caso 1: Se for um objeto datetime.time
+
     if isinstance(valor_horario, time):
         return valor_horario.strftime('%H:%M')
 
-    # Caso 2: Se for um objeto datetime.timedelta (comum de bancos de dados para colunas TIME)
     if isinstance(valor_horario, timedelta):
         total_seconds = int(valor_horario.total_seconds())
-        # Ignora dias, foca apenas na parte de tempo do dia
-        if total_seconds < 0: # Lida com timedeltas negativos, se aplicável
-            # Você pode querer um tratamento específico aqui, por ex., '' ou erro
-            # Para simplificar, vamos assumir horas e minutos a partir de 0 se for negativo
-            # ou tratar como 00:00. A lógica exata pode depender do seu caso de uso.
-            # Exemplo: tratar como 00:00 se negativo ou converter para positivo
-            # Para este exemplo, vamos apenas calcular com base no valor absoluto.
+ 
+        if total_seconds < 0:
+         
             total_seconds = abs(total_seconds)
 
-        hours = (total_seconds // 3600) % 24 # Garante que as horas fiquem dentro de 0-23
+        hours = (total_seconds // 3600) % 24 
         minutes = (total_seconds % 3600) // 60
         return f"{hours:02}:{minutes:02}"
 
-    # Caso 3: Se for uma string
+
     if isinstance(valor_horario, str):
         try:
-            # Tenta primeiro como HH:MM:SS
+      
             if valor_horario.count(':') == 2:
                 dt_obj = datetime.strptime(valor_horario, '%H:%M:%S')
                 return dt_obj.strftime('%H:%M')
             # Depois como HH:MM
             elif valor_horario.count(':') == 1:
                 dt_obj = datetime.strptime(valor_horario, '%H:%M')
-                return dt_obj.strftime('%H:%M') # Já está no formato, mas re-formata para garantir
+                return dt_obj.strftime('%H:%M')
             else:
-                # Se não for um formato de tempo reconhecido, retorna a string original
+           
                 return valor_horario
         except ValueError:
-            # Se a conversão da string falhar
-            return valor_horario # Retorna a string original
+        
+            return valor_horario 
 
-    # Fallback: Se não for nenhum dos tipos acima, tenta converter para string
+  
     return str(valor_horario)
 
 @bp_converte_estagiario_pdf.route('/api/estagiario/pdf', methods=['POST'])
@@ -169,7 +160,7 @@ def converte_estagiario_pdf():
 
         arquivos_gerados = []
         
-        estado_para_feriados = 'AM' # Ou defina dinamicamente se necessário
+        estado_para_feriados = 'AM' 
 
         feriados_mes_corrente, pontos_fac_mes_corrente = pegar_feriados_mes(ano, mes_numerico, estado=estado_para_feriados)
 
@@ -181,11 +172,9 @@ def converte_estagiario_pdf():
         
         feriados_proximo_mes, pontos_fac_proximo_mes = pegar_feriados_mes(ano_proximo_mes_periodo, mes_numerico_proximo_periodo, estado=estado_para_feriados)
         
-        # Combina as duas listas de feriados. Usar set para evitar duplicatas caso haja alguma sobreposição (improvável com meses distintos)
+     
         todos_feriados_do_periodo = list(set(feriados_mes_corrente + feriados_proximo_mes))
         todos_pontos_facultativos_do_periodo = list(set(pontos_fac_mes_corrente + pontos_fac_proximo_mes))
-        # -- Fim da Modificação --
-        #feriados_do_mes = pegar_feriados_mes(ano, mes_numerico)
 
         for estagiario in estagiarios:
             template_path = 'FREQUÊNCIA ESTAGIÁRIOS - MODELO.docx'
@@ -224,13 +213,12 @@ def converte_estagiario_pdf():
             
 
 
-        # Cria um arquivo ZIP com todos os PDFs
         zip_path = f"setor/frequencias_{mes_por_extenso}.zip"
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for pdf in arquivos_gerados:
                 zipf.write(pdf, os.path.basename(pdf))
 
-        # Salva o ZIP no banco
+  
         cursor.execute(
             "INSERT INTO arquivos_zip (mes, caminho_zip, tipo) VALUES (%s, %s,%s)",
             (mes_por_extenso, zip_path, 'estagiario')
@@ -279,7 +267,7 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados, pontos_fac
     linha_inicial = 7
     table = doc.tables[0]
 
-    # ... (a formatação inicial da tabela permanece a mesma)
+
     for row in table.rows:
         row.height = Cm(0.55)
         row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
@@ -316,7 +304,7 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados, pontos_fac
         dia_run.font.size = Pt(8)
         dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-        # --- LÓGICA DE PREENCHIMENTO ATUALIZADA ---
+   
         is_ponto_facultativo = data_iteracao_atual in pontos_facultativos
         is_feriado = data_iteracao_atual in feriados
         is_ferias = False
@@ -328,7 +316,7 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados, pontos_fac
                 is_ferias = True
 
         texto = None
-        # A ordem aqui é importante para definir a prioridade
+ 
         if dia_semana == 5:
             texto = "SÁBADO"
         elif dia_semana == 6:
@@ -341,8 +329,8 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados, pontos_fac
             texto = "FERIADO"
 
         if texto:
-            set_row_background(row, 'C5E0B4') # Cor de fundo verde claro
-            # As colunas para marcar são as mesmas para todos os status (Sábado, Feriado, etc.)
+            set_row_background(row, 'C5E0B4') 
+      
             celulas_para_marcar = [2, 5, 9, 13]
 
             for j in celulas_para_marcar:
@@ -356,7 +344,7 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados, pontos_fac
                     run_cell.font.size = Pt(6)
                     p_cell.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-    # ... (O restante da função com a lógica de remover linhas extras continua igual)
+   
     total_linhas_dados_template = len(table.rows) - linha_inicial
     dias_no_periodo_atual = len(dias_periodo)
     if total_linhas_dados_template > dias_no_periodo_atual:

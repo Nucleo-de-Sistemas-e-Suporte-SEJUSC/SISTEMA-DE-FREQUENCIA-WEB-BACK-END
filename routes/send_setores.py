@@ -21,7 +21,6 @@ def download_zip(setor, mes):
         mes_formatado = mes.capitalize()
         is_estagiarios = 'estagiarios' in request.path.lower()
 
-        # Logs para depuração (muito importantes!)
         print(f"Setor recebido da URL: '{setor}'")
         print(f"Setor transformado para consulta DB: '{setor_para_consulta_db}'")
         print(f"Mês formatado para consulta DB: '{mes_formatado}'")

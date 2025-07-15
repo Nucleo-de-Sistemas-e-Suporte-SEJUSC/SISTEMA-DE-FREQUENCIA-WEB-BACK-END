@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request, Flask
 from mysql.connector import Error
 from conection_mysql import connect_mysql
-from flask_login import login_required  # Importa diretamente do Flask-Login
+from flask_login import login_required  
 from decorador import roles_required 
 import os
 
@@ -27,12 +27,12 @@ def explorar_pastas(caminho_base):
 
         
         if os.path.isdir(caminho_completo):
-            # Se for uma pasta, explora recursivamente
+            
             subdados = explorar_pastas(caminho_completo)
-            if subdados:  # Só adiciona se contiver PDFs
+            if subdados:  
                 dados[item] = subdados
         elif item.endswith('.pdf'):
-            # Se for um PDF, adiciona ao nível atual
+          
             if 'arquivos' not in dados:
                 dados['arquivos'] = []
             dados['arquivos'].append(item)

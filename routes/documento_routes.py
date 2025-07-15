@@ -2,7 +2,7 @@ import os
 import uuid
 from flask import jsonify, request, Blueprint
 from werkzeug.utils import secure_filename
-from conection_mysql import connect_mysql # Assuming this is your database connection module
+from conection_mysql import connect_mysql 
 
 bp_documentos = Blueprint('bp_documentos', __name__)
 
@@ -20,11 +20,11 @@ def allowed_file(filename):
 
 @bp_documentos.route('/api/documentos', methods=['POST'])
 def upload_documento():
-    # Check if 'files' is in the request (plural for multiple files)
+   
     if 'files' not in request.files:
         return jsonify({"error": "Requisição inválida: o campo 'files' é obrigatório."}), 400
 
-    files = request.files.getlist('files') # Use getlist to get all files for the 'files' key
+    files = request.files.getlist('files') 
 
     if not files or all(f.filename == '' for f in files):
         return jsonify({"error": "Nenhum arquivo selecionado."}), 400
@@ -48,8 +48,7 @@ def upload_documento():
 
         for file in files:
             if file.filename == '':
-                continue # Skip empty file entries
-
+                continue 
             if not allowed_file(file.filename):
                 errors.append(f"Tipo de arquivo não permitido para '{file.filename}'.")
                 continue
@@ -83,14 +82,14 @@ def upload_documento():
                 })
 
             except Exception as e:
-                # If there's an error saving/inserting for a specific file, try to clean up
+                
                 if os.path.exists(filepath):
                     os.remove(filepath)
                 errors.append(f"Erro ao processar o arquivo '{original_filename}': {e}")
                 print(f"Erro no upload para {original_filename}: {e}")
-                # Don't commit if there was an error with this file, but continue with others if possible
+              
                 if conn:
-                    conn.rollback() # Rollback the last operation if an error occurs for a single file
+                    conn.rollback() 
 
     except Exception as e:
         print(f"Erro geral no upload de múltiplos documentos: {e}")

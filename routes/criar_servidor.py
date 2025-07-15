@@ -30,7 +30,6 @@ def criar_servidor():
         except Error as db_err:
             return jsonify({'erro': 'Erro ao conectar ao banco de dados', 'mensagem': str(db_err)}), 500
 
-        # --- Extração dos campos existentes ---
         setor = body.get('setor')
         nome = body.get('nome')
         matricula = body.get('matricula')
@@ -49,7 +48,7 @@ def criar_servidor():
         pis = body.get('pis')
         dataAdmissao = body.get('data_admissao')
 
-        # --- Extração dos NOVOS campos ---
+       
         endereco = body.get('endereco')
         nome_pai = body.get('nome_pai')
         nome_mae = body.get('nome_mae')
@@ -57,7 +56,7 @@ def criar_servidor():
         carteira_profissional = body.get('carteira_profissional')
         data_posse = body.get('data_posse')
 
-        # Verifica duplicidade
+      
         try:
             verifica_se_servidor_existe = "SELECT * FROM funcionarios WHERE nome = %s"
             cursor.execute(verifica_se_servidor_existe, (nome,))
@@ -66,7 +65,7 @@ def criar_servidor():
         except Error as db_err:
             return jsonify({'erro': 'Erro ao consultar duplicidade', 'mensagem': str(db_err)}), 500
 
-        # --- Inserção com os NOVOS campos ---
+    
         try:
             criar_dados_servidor = """
                 INSERT INTO funcionarios (
@@ -88,7 +87,7 @@ def criar_servidor():
             print(db_err)
             return jsonify({'erro': 'Erro ao inserir servidor', 'mensagem': str(db_err)}), 500
 
-        # --- Resposta com os NOVOS campos ---
+      
         dados_retornados = {
             "id": cursor.lastrowid,
             "setor": setor, "nome": nome, "matricula": matricula, "cargo": cargo,
@@ -96,7 +95,7 @@ def criar_servidor():
             "saida": horariosaida, "data_nascimento": dataNascimento, "sexo": sexo,
             'estado_civil': estadoCivil, "naturalidade": naturalidade, "nacionalidade": nacionalidade,
             "identidade": identidade, "titulo_eleitor": tituloEleitor, "cpf": cpf, "pis": pis,
-            # novos campos
+      
             "endereco": endereco, "nome_pai": nome_pai, "nome_mae": nome_mae, 
             "servico_militar": servico_militar, "carteira_profissional": carteira_profissional, 
             "data_posse": data_posse
