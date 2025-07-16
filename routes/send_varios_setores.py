@@ -12,7 +12,7 @@ def download_zip_multissetores(mes):
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
-        # Busca o ZIP mais recente de multissetores para o mês
+      
         cursor.execute(
             "SELECT caminho_zip FROM arquivos_zip WHERE mes = %s AND tipo = 'multissetores_funcionarios_geral' ORDER BY id DESC LIMIT 1",
             (mes_formatado,)

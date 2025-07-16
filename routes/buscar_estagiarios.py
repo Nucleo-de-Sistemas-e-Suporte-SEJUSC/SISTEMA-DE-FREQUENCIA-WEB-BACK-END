@@ -1,9 +1,9 @@
 from flask import Blueprint, jsonify, request
 from mysql.connector import Error
 from conection_mysql import connect_mysql
-from flask_login import login_required  # Importa diretamente do Flask-Login
+from flask_login import login_required  
 from decorador import roles_required 
-# Definir o Blueprint
+
 bp_buscar_estagiarios = Blueprint('bp_buscar_estagiarios', __name__)
 
 @bp_buscar_estagiarios.route("/api/estagiarios", methods=["GET"])
@@ -12,11 +12,11 @@ def buscar_estagiarios():
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
-        # Consulta padrão para buscar apenas estagiários ativos
+      
         consulta = "SELECT * FROM estagiarios WHERE status = 'ativo'"
         parametros = []
 
-        # Filtros opcionais
+ 
         nome = request.args.get("nome")
         if nome:
             consulta += " AND nome LIKE %s"
@@ -29,7 +29,7 @@ def buscar_estagiarios():
 
         consulta += " ORDER BY nome"
 
-        # Executa a consulta
+     
         cursor.execute(consulta, tuple(parametros))
         estagiarios = cursor.fetchall()
 

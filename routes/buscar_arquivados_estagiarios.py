@@ -2,12 +2,12 @@ from flask import jsonify, Blueprint
 from datetime import timedelta
 from conection_mysql import connect_mysql
 from mysql.connector import Error
-from flask_login import login_required  # Importa diretamente do Flask-Login
-from decorador import roles_required   # Importa o decorador personalizado
+from flask_login import login_required
+from decorador import roles_required   
 
 bp_buscar_estagiarios_arquivados = Blueprint('bp_buscar_estagiarios_arquivados', __name__)
 def timedelta_to_str(td):
-    """Converte timedelta em string no formato HH:MM:SS"""
+   
     total_seconds = int(td.total_seconds())
     hours, remainder = divmod(total_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
@@ -19,7 +19,6 @@ def buscar_estagiarios_arquivados():
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
-        # Consulta para buscar todos os estagiários arquivados
         buscar_estagiarios_arquivados = """
             SELECT * FROM estagiarios
             WHERE status = 'arquivado'

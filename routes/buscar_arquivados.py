@@ -2,8 +2,8 @@ from flask import jsonify, Blueprint
 from datetime import timedelta
 from conection_mysql import connect_mysql
 from mysql.connector import Error
-from flask_login import login_required  # Importa diretamente do Flask-Login
-from decorador import roles_required   # Importa o decorador personalizado
+from flask_login import login_required 
+from decorador import roles_required   
 
 
 bp_buscar_servidores_arquivados = Blueprint('bp_buscar_servidores_arquivados', __name__)
@@ -23,7 +23,7 @@ def buscar_servidores_arquivados():
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
-        # Consulta para buscar todos os servidores arquivados
+     
         buscar_servidores_arquivados = """
             SELECT * FROM funcionarios
             WHERE status = 'arquivado'

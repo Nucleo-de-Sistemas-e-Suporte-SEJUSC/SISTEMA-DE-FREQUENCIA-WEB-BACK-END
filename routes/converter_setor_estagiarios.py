@@ -101,7 +101,7 @@ def converte_setores_estagiarios_pdf():
         mes_numerico = data_ano_mes_atual['mes_numerico']
         ano = data_ano_mes_atual['ano']
 
-        # --- LÓGICA DE BUSCA DE FERIADOS LIMPA E CORRIGIDA ---
+    
         estado_para_feriados = 'AM'
         feriados_corrente, pontos_fac_corrente = pegar_feriados_mes(ano, mes_numerico, estado=estado_para_feriados)
         ano_proximo = ano
@@ -113,7 +113,6 @@ def converte_setores_estagiarios_pdf():
         
         todos_feriados_do_periodo = list(set(feriados_corrente + feriados_proximo))
         todos_pontos_facultativos_do_periodo = list(set(pontos_fac_corrente + pontos_fac_proximo))
-        # --- FIM DA LÓGICA DE BUSCA DE FERIADOS ---
 
         arquivos_zip_dos_setores = []
 
@@ -140,7 +139,7 @@ def converte_setores_estagiarios_pdf():
                 template_path = 'FREQUÊNCIA ESTAGIÁRIOS - MODELO.docx'
                 doc = Document(template_path)
                 
-                # Passando as duas listas corretamente
+               
                 cria_dias_da_celula(doc, ano, mes_numerico, estagiario, todos_feriados_do_periodo, todos_pontos_facultativos_do_periodo)
 
                 troca_de_dados = {
@@ -209,10 +208,7 @@ def converte_setores_estagiarios_pdf():
         return jsonify({'erro': f'Erro ao processar setores de estagiários: {str(exception)}'}), 500
 
 def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados, pontos_facultativos):
-    """
-    Preenche a tabela de frequência de estagiário (período de 21 a 20),
-    ajustando linhas e preenchendo os dias com os respectivos status.
-    """
+
     def calcula_periodo_21_a_20(ano_calc, mes_calc):
         data_inicio = datetime(ano_calc, mes_calc, 21)
         if mes_calc == 12:
@@ -238,7 +234,7 @@ def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados, pontos_
         
     table = doc.tables[0]
     
-    # Ajusta o número de linhas na tabela para o período
+  
     dias_periodo = calcula_periodo_21_a_20(ano_param, mes_param)
     target_total_rows = linha_inicial + len(dias_periodo)
 
@@ -250,14 +246,14 @@ def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados, pontos_
 
     while len(table.rows) < target_total_rows:
         new_row = table.add_row()
-        # ALTURA DA LINHA AJUSTADA AQUI
+ 
         new_row.height = Cm(0.5) 
         new_row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
         for cell in new_row.cells:
             p = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
             p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-    # Preenche os dados de cada dia do período
+
     for i, dia_info in enumerate(dias_periodo):
         dia = dia_info["dia"]
         mes_iter = dia_info["mes"]
@@ -265,26 +261,25 @@ def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados, pontos_
         
         row = table.rows[linha_inicial + i]
         
-        # APLICA A ALTURA AJUSTADA TAMBÉM NAS LINHAS EXISTENTES PARA GARANTIR CONSISTÊNCIA
         row.height = Cm(0.5)
         row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
         
         current_date_obj = date(ano_dia, mes_iter, dia)
         dia_semana = pega_final_de_semana(ano_dia, mes_iter, dia)
         
-        # Limpeza da linha
+        
         for cell in row.cells:
             cell.text = ""
             for paragraph in cell.paragraphs:
                 paragraph.clear()
                 paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
         
-        # Preenche o dia
+    
         dia_run = row.cells[0].paragraphs[0].add_run(str(dia))
         dia_run.font.name = "Calibri"
         dia_run.font.size = Pt(8)
 
-        # Lógica para definir o status do dia
+
         text_to_write = None
         
         if dia_semana == 5:
@@ -307,7 +302,7 @@ def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados, pontos_
             elif text_to_write is None and current_date_obj in feriados:
                 text_to_write = "FERIADO"
 
-        # Se algum status foi definido, escreve nas colunas
+    
         if text_to_write:
             set_row_background(row, 'C5E0B4')
             column_indices_to_fill = [2, 5, 9, 13]

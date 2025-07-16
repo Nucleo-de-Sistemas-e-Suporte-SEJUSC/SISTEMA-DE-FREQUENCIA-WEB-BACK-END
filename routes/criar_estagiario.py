@@ -3,7 +3,7 @@ from cerberus import Validator
 from flask import jsonify, request, Blueprint
 from conection_mysql import connect_mysql
 from mysql.connector import Error
-from flask_login import login_required  # Importa diretamente do Flask-Login
+from flask_login import login_required  
 from decorador import roles_required 
 
 bp_criar_estagiario = Blueprint('bp_criar_estagiario', __name__)

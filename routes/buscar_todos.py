@@ -2,9 +2,9 @@ from flask import jsonify, request
 from datetime import timedelta
 from mysql.connector import Error
 from conection_mysql import connect_mysql
-from . import bp  # Importa o Blueprint
-from flask_login import login_required  # Importa diretamente do Flask-Login
-from decorador import roles_required  # Importa apenas o decorador personalizado
+from . import bp  
+from flask_login import login_required 
+from decorador import roles_required 
 
 
 def timedelta_to_str(td):
@@ -23,20 +23,18 @@ def buscar_servidores():
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
-        # Verifica se o parâmetro `listar_setores` foi enviado
+       
         listar_setores = request.args.get("listar_setores", "false").lower() == "true"
         if listar_setores:
-            # Consulta para listar todos os setores distintos
             consulta_setores = "SELECT DISTINCT setor FROM funcionarios"
             cursor.execute(consulta_setores)
             setores = [row["setor"] for row in cursor.fetchall()]
             return jsonify({"setores": setores}), 200
 
-        # Consulta padrão para buscar servidores
         consulta = "SELECT * FROM funcionarios WHERE status='ativo'"
         parametros = []
 
-        # Filtros opcionais
+
         setor = request.args.get("setor")
         if setor:
             consulta += " AND setor = %s"
@@ -47,7 +45,7 @@ def buscar_servidores():
             consulta += " AND nome LIKE %s"
             parametros.append(f"%{nome}%")
 
-        # Executa a consulta
+
         cursor.execute(consulta, tuple(parametros))
         servidores = cursor.fetchall()
 
@@ -55,7 +53,7 @@ def buscar_servidores():
             conexao.close()
             return jsonify({"erro": "Nenhum servidor encontrado"}), 404
 
-        # Converte campos timedelta em string
+
         for servidor in servidores:
             for key, value in servidor.items():
                 if isinstance(value, timedelta):

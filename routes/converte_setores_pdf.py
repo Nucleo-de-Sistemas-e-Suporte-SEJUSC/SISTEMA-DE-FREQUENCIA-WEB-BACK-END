@@ -234,13 +234,10 @@ def converte_setores_pdf():
             conexao_principal.close()
         return jsonify({'erro': f'Erro ao processar setores: {str(exception)}'}), 500
 
-# Modificado para aceitar 'feriados' e aplicar a lógica
+
 
 def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funcionario, feriados, pontos_facultativos):
-    """
-    Preenche a tabela de frequência mensal no documento Word, ajustando o número de linhas
-    e preenchendo os dias com os respectivos status (Sábado, Domingo, Feriado, Ponto Facultativo, Férias).
-    """
+  
     linha_inicial = 8
 
     if not doc.tables:
@@ -249,7 +246,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
     
     table = doc.tables[0]
 
-    # 1. Ajustar o número de linhas na tabela para corresponder à quantidade de dias no mês
+ 
     target_total_rows_in_table = linha_inicial + quantidade_dias_no_mes
 
     while len(table.rows) > target_total_rows_in_table:
@@ -260,33 +257,33 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
 
     while len(table.rows) < target_total_rows_in_table:
         new_row = table.add_row()
-        # ALTURA DA LINHA AJUSTADA AQUI
+   
         new_row.height = Cm(0.48) 
         new_row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
         for cell in new_row.cells:
             p = cell.paragraphs[0] if cell.paragraphs else cell.add_paragraph()
             p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-    # 2. Preencher as linhas de dados
+
     for i in range(quantidade_dias_no_mes):
         dia = i + 1
         row = table.rows[linha_inicial + i]
         
-        # APLICA A ALTURA AJUSTADA TAMBÉM NAS LINHAS EXISTENTES PARA GARANTIR CONSISTÊNCIA
+       
         row.height = Cm(0.48)
         row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
         
         data_atual_obj = date(ano, mes_numerico, dia)
         dia_semana = pega_final_de_semana(ano, mes_numerico, dia)
 
-        # Limpeza e formatação inicial da linha
+
         for cell in row.cells:
             cell.text = "" 
             for paragraph in cell.paragraphs:
                 paragraph.clear() 
                 paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-        # Preencher o número do dia na primeira coluna
+   
         dia_cell = row.cells[0]
         dia_paragraph = dia_cell.paragraphs[0]
         dia_run = dia_paragraph.add_run(str(dia))
@@ -294,7 +291,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
         dia_run.font.size = Pt(8)
         dia_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
 
-        # Lógica para Sábados e Domingos
+ 
         texto_status = ""
         if dia_semana == 5:
             texto_status = "SÁBADO"
@@ -314,7 +311,6 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                             run.font.name = "Calibri"
                             run.font.size = Pt(6) 
 
-        # Lógica para Ponto Facultativo e Feriado (apenas em dias de semana)
         if data_atual_obj in pontos_facultativos and dia_semana not in [5, 6]:
             set_row_background(row, 'C5E0B4')
             for j in [2, 5, 9, 13]:
@@ -341,7 +337,7 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                             run.font.name = "Calibri"
                             run.font.size = Pt(6)
 
-        # Lógica para Férias (sobrescreve o status anterior se for o caso, exceto em fins de semana)
+
         if funcionario.get('feriasinicio') and funcionario.get('feriasfinal'):
             ferias_inicio_raw = funcionario['feriasinicio']
             ferias_final_raw = funcionario['feriasfinal']
@@ -363,12 +359,4 @@ def cria_dias_da_celula(doc, quantidade_dias_no_mes, ano, mes_numerico, funciona
                                 run.font.name = "Calibri"
                                 run.font.size = Pt(6)
     
-    # Se você tem múltiplas tabelas no documento e só quer processar a primeira,
-    # o loop `for table in doc.tables:` pode ser removido ou adicionar um `break` no final.
-    # Se o código original processava todas, mantenha o loop. Pela sua estrutura, parece que
-    # a intenção é processar a primeira tabela de frequência encontrada.
-    # Adicionando um break para processar apenas a primeira tabela, que é o comportamento mais comum.
-    # Remova este 'break' se você intencionalmente processa múltiplas tabelas de frequência no mesmo doc.
-    # No seu código original, não havia break, então o loop for table continuaria.
-    # Para este ajuste de linhas, faz mais sentido focar em UMA tabela principal.
-    # Se o loop for table for mantido, a lógica de ajuste de linhas será aplicada a cada tabela.
+   
