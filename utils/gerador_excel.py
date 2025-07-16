@@ -45,8 +45,8 @@ def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
             'F16': dados_funcionario.get('campo_mudança_nome'), 'D26': dados_funcionario.get('nome_pai'),
             'D27': dados_funcionario.get('nome_mae'), 'D30': dados_funcionario.get('endereco'),
             'B43': dados_funcionario.get('data_Admissao'), 'F43': dados_funcionario.get('data_posse'),
-            'I43': dados_funcionario.get('cargo'), 'M43': dados_funcionario.get('venc_salario'),
-            'I46': dados_funcionario.get('horario'), 'B46': dados_funcionario.get('desligamento'),
+            'I43': dados_funcionario.get('cargo'), 'M43': dados_funcionario.get('vencimento_ou_salario'),
+            'I46': dados_funcionario.get('horario'), 'B46': dados_funcionario.get('data_desligamento'),
             'F46': dados_funcionario.get('inicio_atividades'), 'M46': dados_funcionario.get('descanso_semanal'),
         }
         

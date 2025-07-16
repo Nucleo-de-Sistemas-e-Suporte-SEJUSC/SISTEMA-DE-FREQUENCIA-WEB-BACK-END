@@ -51,8 +51,15 @@ def atualizar_servidor(id):
                     cursor.execute(query_insert, (ben.get('nome'), ben.get('parentesco'), ben.get('data_nascimento'), id))
 
 
-        campos_permitidos = ['setor', 'nome', 'matricula', 'cargo', 'funcao', 'horario', 'horarioentrada', 'horariosaida', 'feriasinicio', 'feriasfinal','data_nascimento', 'sexo', 'estado_civil', 'naturalidade', 'nacionalidade', 'identidade', 'titulo_eleitor', 'cpf', 'pis', 'data_Admissao', 'endereco', 'nome_pai', 'nome_mae', 'servico_militar', 'carteira_profissional', 'data_posse', 'venc_salario', 'desligamento', 'inicio_atividades', 'descanso_semanal']
-        
+        campos_permitidos = [
+            'setor', 'nome', 'matricula', 'cargo', 'funcao', 'horario', 
+            'horarioentrada', 'horariosaida', 'feriasinicio', 'feriasfinal',
+            'data_nascimento', 'sexo', 'estado_civil', 'naturalidade', 
+            'nacionalidade', 'identidade', 'titulo_eleitor', 'cpf', 'pis', 
+            'data_Admissao', 'endereco', 'nome_pai', 'nome_mae', 'servico_militar', 
+            'carteira_profissional', 'data_posse', 
+            'data_desligamento', 'inicio_atividades', 'descanso_semanal', 'vencimento_ou_salario'
+        ]
         campos_para_atualizar = {campo: body[campo] for campo in campos_permitidos if campo in body}
 
         if campos_para_atualizar:
