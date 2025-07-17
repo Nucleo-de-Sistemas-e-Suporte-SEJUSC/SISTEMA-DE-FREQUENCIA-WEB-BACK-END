@@ -50,7 +50,7 @@ def preencher_ficha_excel(template_path, dados_funcionario, caminho_saida):
             'F46': dados_funcionario.get('inicio_atividades'), 'M46': dados_funcionario.get('descanso_semanal'),
         }
         
-        celulas_de_data_frente = ['B19', 'B43', 'F43', 'F46']
+        celulas_de_data_frente = ['B19', 'B43', 'F43', 'F46', 'B46']
 
      
         for celula_str, valor in mapeamento_frente.items():
