@@ -123,7 +123,7 @@ def converte_setores_pdf():
             conexao_principal = connect_mysql()
             cursor = conexao_principal.cursor(dictionary=True)
 
-            query_funcionarios = "SELECT * FROM funcionarios WHERE setor = %s"
+            query_funcionarios = "SELECT * FROM funcionarios WHERE setor = %s AND status != 'arquivado'"
             cursor.execute(query_funcionarios, (setor_nome,))
             funcionarios = cursor.fetchall()
 
