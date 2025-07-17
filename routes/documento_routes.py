@@ -11,7 +11,7 @@ UPLOADS_FOLDER = os.path.join(os.getcwd(), 'uploads')
 if not os.path.exists(UPLOADS_FOLDER):
     os.makedirs(UPLOADS_FOLDER)
 
-# Extensões de arquivo permitidas
+
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx'}
 
 def allowed_file(filename):
@@ -29,7 +29,15 @@ def upload_documento():
     if not files or all(f.filename == '' for f in files):
         return jsonify({"error": "Nenhum arquivo selecionado."}), 400
 
-    tipo_documento = request.form.get('tipo_documento', 'Não especificado')
+    tipos_documento = request.form.getlist('tipos_documento')
+    
+    if not tipos_documento:
+        tipos_documento = ['Não especificado'] * len(files)
+    
+   
+    while len(tipos_documento) < len(files):
+        tipos_documento.append('Não especificado')
+
     funcionario_id = request.form.get('funcionario_id')
     estagiario_id = request.form.get('estagiario_id')
 
@@ -46,12 +54,14 @@ def upload_documento():
         conn = connect_mysql()
         cursor = conn.cursor()
 
-        for file in files:
+        for index, file in enumerate(files):
             if file.filename == '':
                 continue 
             if not allowed_file(file.filename):
                 errors.append(f"Tipo de arquivo não permitido para '{file.filename}'.")
                 continue
+
+            tipo_documento_atual = tipos_documento[index]
 
             original_filename = secure_filename(file.filename)
             extension = original_filename.rsplit('.', 1)[1].lower()
@@ -70,7 +80,7 @@ def upload_documento():
                 id_func = int(funcionario_id) if funcionario_id else None
                 id_estag = int(estagiario_id) if estagiario_id else None
 
-                cursor.execute(query, (original_filename, unique_filename, filepath, tipo_documento, id_func, id_estag))
+                cursor.execute(query, (original_filename, unique_filename, filepath, tipo_documento_atual, id_func, id_estag))
                 conn.commit()
 
                 new_document_id = cursor.lastrowid
@@ -78,6 +88,7 @@ def upload_documento():
                     "document_id": new_document_id,
                     "filename": unique_filename,
                     "original_filename": original_filename,
+                    "tipo_documento": tipo_documento_atual,
                     "status": "success"
                 })
 
