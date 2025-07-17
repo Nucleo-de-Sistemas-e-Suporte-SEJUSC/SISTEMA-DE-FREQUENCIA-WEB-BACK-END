@@ -119,7 +119,7 @@ def converte_setores_estagiarios_pdf():
         for setor_nome in setores_nomes:
             conexao_principal = connect_mysql()
             cursor = conexao_principal.cursor(dictionary=True)
-            query = "SELECT * FROM estagiarios WHERE setor = %s"
+            query = "SELECT * FROM estagiarios WHERE setor = %s AND status != 'arquivado'"
             cursor.execute(query, (setor_nome,))
             estagiarios = cursor.fetchall()
 
