@@ -93,8 +93,20 @@ def converte_setores_estagiarios_pdf():
         setores_nomes = body.get('setores')
         mes_body = body.get('mes')
 
+        print(f"DEBUG: Body recebido: {body}")
+        print(f"DEBUG: Setores recebidos: {setores_nomes}")
+        print(f"DEBUG: Mês recebido: {mes_body}")
+
         if not setores_nomes or not isinstance(setores_nomes, list):
             return jsonify({'erro': 'Nenhum setor selecionado ou formato inválido'}), 400
+
+        # Tratamento para o caso onde mes_body pode ser uma lista
+        if isinstance(mes_body, list) and len(mes_body) > 0:
+            mes_body = mes_body[0]
+            print(f"DEBUG: Mês extraído da lista: {mes_body}")
+
+        if not mes_body:
+            return jsonify({'erro': 'Mês não informado'}), 400
 
         data_ano_mes_atual = data_atual(mes_body)
         mes_por_extenso = data_ano_mes_atual['mes']
@@ -160,7 +172,7 @@ def converte_setores_estagiarios_pdf():
                 docx_path = os.path.abspath(os.path.join(caminho_pasta_base_setor, f"{nome_base}.docx"))
                 pdf_path = os.path.abspath(os.path.join(caminho_pasta_base_setor, f"{nome_base}.pdf"))
                 doc.save(docx_path)
-                convert_to_pdf(docx_path, pdf_path)
+                convert_to_pdf(docx_path, caminho_pasta_base_setor)
                 arquivos_pdf_gerados_neste_setor.append(pdf_path)
                 
                 cursor.execute("INSERT INTO arquivos_pdf (servidor_id, caminho_pdf) VALUES (%s, %s)", (estagiario['id'], pdf_path))

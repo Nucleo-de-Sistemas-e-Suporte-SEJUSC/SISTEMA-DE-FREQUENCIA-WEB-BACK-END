@@ -8,6 +8,8 @@ bp_send_varios_setores_estagiarios_pdf = Blueprint('bp_send_varios_setores_estag
 def download_zip_multiestagiarios_estagiarios(mes): # Função renomeada
     try:
         mes_formatado = mes.capitalize()
+        print(f"DEBUG: Buscando arquivo multiestagiarios para mês: {mes_formatado}")
+        
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
 
@@ -17,29 +19,35 @@ def download_zip_multiestagiarios_estagiarios(mes): # Função renomeada
         )
         result = cursor.fetchone()
 
+        print(f"DEBUG: Resultado da consulta: {result}")
+
         if not result:
             if conexao.is_connected():
                 conexao.close()
-            return jsonify({'erro': 'Arquivo ZIP multi-setores de estagiários não encontrado'}), 404
+            return jsonify({'erro': 'Arquivo ZIP multi-setores de estagiários não encontrado no banco de dados'}), 404
 
         zip_path_from_db = result["caminho_zip"]
         zip_path_verified = os.path.normpath(zip_path_from_db)
 
-        print(f"Tentando acessar arquivo ZIP (multiestagiarios) no caminho: {zip_path_verified}")
+        print(f"DEBUG: Caminho do arquivo no DB: '{zip_path_from_db}'")
+        print(f"DEBUG: Caminho verificado: '{zip_path_verified}'")
+        print(f"DEBUG: Arquivo existe? {os.path.exists(zip_path_verified)}")
 
         if not os.path.exists(zip_path_verified):
             if conexao.is_connected():
                 conexao.close()
             return jsonify({
-                'erro': 'Arquivo físico (multiestagiarios) não encontrado no servidor.',
+                'erro': 'Arquivo físico não encontrado no servidor.',
                 'caminho_esperado': zip_path_verified,
-                'dados_banco': result
+                'dados_banco': result,
+                'mensagem': 'O arquivo ZIP de múltiplos setores só é criado quando há mais de um setor sendo processado'
             }), 404
 
         download_name = os.path.basename(zip_path_verified) 
         if conexao.is_connected():
             conexao.close()
 
+        print(f"DEBUG: Enviando arquivo: {zip_path_verified}")
         return send_file(
             zip_path_verified,
             mimetype='application/zip',
