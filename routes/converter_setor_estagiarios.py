@@ -14,8 +14,17 @@ from dateutil.easter import easter
 import holidays
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+import re
 
 bp_converte_setor_estagiario_pdf = Blueprint('bp_converte_setor_estagiario_pdf', __name__)
+
+def limpa_nome(nome):
+    # Remove caracteres problemáticos para caminhos de diretório e nomes de arquivo
+    # Remove barras, barras invertidas e outros caracteres problemáticos
+    nome_limpo = re.sub(r'[<>:"|?*\\/]', '', nome).strip()
+    # Substitui espaços por underscores
+    nome_limpo = nome_limpo.replace(' ', '_')
+    return nome_limpo
 
 def set_cell_background(cell, color_hex):
     tc = cell._tc
@@ -143,7 +152,7 @@ def converte_setores_estagiarios_pdf():
                 continue
 
             arquivos_pdf_gerados_neste_setor = []
-            setor_limpo = setor_nome.strip().replace('/', '_')
+            setor_limpo = limpa_nome(setor_nome)
             caminho_pasta_base_setor = f"setor/estagiarios/{setor_limpo}/{mes_por_extenso}"
             os.makedirs(caminho_pasta_base_setor, exist_ok=True)
 

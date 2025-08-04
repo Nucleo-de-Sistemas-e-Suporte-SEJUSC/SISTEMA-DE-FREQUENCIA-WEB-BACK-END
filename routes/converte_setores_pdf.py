@@ -102,9 +102,12 @@ def formatar_horario_para_hh_mm_v2(valor_horario):
     return str(valor_horario)
 
 def limpa_nome(nome):
-    # Preserva caracteres importantes para caminhos de diretório
-    # Remove apenas caracteres problemáticos para nomes de arquivo
-    return re.sub(r'[<>:"|?*]', '', nome).strip().replace(' ', '_')
+    # Remove caracteres problemáticos para caminhos de diretório e nomes de arquivo
+    # Remove barras, barras invertidas e outros caracteres problemáticos
+    nome_limpo = re.sub(r'[<>:"|?*\\/]', '', nome).strip()
+    # Substitui espaços por underscores
+    nome_limpo = nome_limpo.replace(' ', '_')
+    return nome_limpo
 
 @bp_converte_setor_pdf.route('/api/setores/pdf', methods=['POST'])
 def converte_setores_pdf():

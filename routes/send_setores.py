@@ -2,8 +2,17 @@ from flask import send_file
 from flask import Blueprint, request, jsonify
 from conection_mysql import connect_mysql
 import os 
+import re
 
 bp_send_setor_pdf = Blueprint('bp_send_setor_pdf', __name__)
+
+def limpa_nome(nome):
+    # Remove caracteres problemáticos para caminhos de diretório e nomes de arquivo
+    # Remove barras, barras invertidas e outros caracteres problemáticos
+    nome_limpo = re.sub(r'[<>:"|?*\\/]', '', nome).strip()
+    # Substitui espaços por underscores
+    nome_limpo = nome_limpo.replace(' ', '_')
+    return nome_limpo
 
 @bp_send_setor_pdf.route('/api/setores/pdf/download-zip/<setor>/<mes>', methods=['GET'])
 @bp_send_setor_pdf.route('/api/setores/estagiarios/<setor>/<mes>', methods=['GET'])
@@ -44,6 +53,22 @@ def download_zip(setor, mes):
         print(f"Executando SQL: {query} com params: {params}")
         cursor.execute(query, params)
         result = cursor.fetchone()
+
+        # Se não encontrou, tenta com o nome limpo
+        if not result:
+            setor_limpo = limpa_nome(setor_para_consulta_db)
+            print(f"Tentando com nome limpo: '{setor_limpo}'")
+            
+            if is_estagiarios:
+                query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND tipo='estagiarios_setor' ORDER BY id DESC LIMIT 1"
+                params = (setor_limpo, mes_formatado)
+            else:
+                query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND tipo='funcionarios_setor' ORDER BY id DESC LIMIT 1"
+                params = (setor_limpo, mes_formatado)
+            
+            print(f"Executando SQL (nome limpo): {query} com params: {params}")
+            cursor.execute(query, params)
+            result = cursor.fetchone()
 
         if not result:
             print("RESULTADO DA CONSULTA: Arquivo ZIP não encontrado no banco de dados.") # Log específico
