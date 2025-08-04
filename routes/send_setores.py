@@ -34,18 +34,14 @@ def download_zip(setor, mes):
 
         if is_estagiarios:
             # Adicionado LIMIT 1
-            query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND tipo='estagiarios_setor' LIMIT 1"
+            query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND tipo='estagiarios_setor' ORDER BY id DESC LIMIT 1"
             params = (setor_para_consulta_db, mes_formatado)
         else:
             # Adicionado LIMIT 1
-            query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND (tipo IS NULL OR tipo != 'estagiarios_setor') LIMIT 1"
+            query = "SELECT caminho_zip FROM arquivos_zip WHERE setor=%s AND mes=%s AND tipo='funcionarios_setor' ORDER BY id DESC LIMIT 1"
             params = (setor_para_consulta_db, mes_formatado)
 
         print(f"Executando SQL: {query} com params: {params}")
-        cursor.execute(query, params)
-        result = cursor.fetchone() 
-        
-        print(f"Executando SQL: {query} com params: {params}") # Log da consulta
         cursor.execute(query, params)
         result = cursor.fetchone()
 
@@ -72,6 +68,9 @@ def download_zip(setor, mes):
         if is_estagiarios:
             download_name = f'frequencias_estagiarios_{setor}_{mes_formatado}.zip'
 
+        print(f"DEBUG: Enviando arquivo ZIP: {zip_path_verified}")
+        print(f"DEBUG: Nome do download: {download_name}")
+        
         return send_file(
             zip_path_verified,
             mimetype='application/zip',

@@ -129,7 +129,8 @@ def converte_estagiario_pdf():
     try:
         body = request.json or {}
         estagiarios_id = body.get('estagiarios', [])
-        print(estagiarios_id)
+        print(f"DEBUG: Body recebido: {body}")
+        print(f"DEBUG: Estagiários recebidos: {estagiarios_id}")
 
         if not estagiarios_id:
             return jsonify({'erro': 'Nenhum estagiário selecionado'}), 400
@@ -140,6 +141,16 @@ def converte_estagiario_pdf():
             return jsonify({'erro': 'IDs inválidos'}), 400
 
         mes_body = body.get('mes')
+        print(f"DEBUG: Mês recebido: {mes_body}")
+
+        # Tratamento para o caso onde mes_body pode ser uma lista
+        if isinstance(mes_body, list) and len(mes_body) > 0:
+            mes_body = mes_body[0]
+            print(f"DEBUG: Mês extraído da lista: {mes_body}")
+
+        if not mes_body:
+            return jsonify({'erro': 'Mês não informado'}), 400
+
         data_ano_mes_atual = data_atual(mes_body)
         mes_por_extenso = data_ano_mes_atual['mes']
         mes_numerico = data_ano_mes_atual['mes_numerico']
@@ -207,7 +218,7 @@ def converte_estagiario_pdf():
 
             
             doc.save(docx_path)
-            convert_to_pdf(docx_path, pdf_path)
+            convert_to_pdf(docx_path, caminho_pasta)
 
             arquivos_gerados.append(pdf_path)
             

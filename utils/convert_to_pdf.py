@@ -40,13 +40,8 @@ def convert_to_pdf(input_path, output_folder):
         pdf_filepath = os.path.join(output_folder, pdf_filename)
 
         if os.path.exists(pdf_filepath):
-            # Renomeia para um nome único para evitar conflitos
-            unique_filename = f"{uuid.uuid4()}.pdf"
-            unique_filepath = os.path.join(output_folder, unique_filename)
-            os.rename(pdf_filepath, unique_filepath)
-            
-            print(f"Conversão para PDF bem-sucedida! Arquivo salvo em: {unique_filepath}")
-            return unique_filepath
+            print(f"Conversão para PDF bem-sucedida! Arquivo salvo em: {pdf_filepath}")
+            return pdf_filepath
         else:
             print("Erro de conversão: O arquivo PDF não foi encontrado após a execução do comando.")
             print("Saída de erro do LibreOffice (stderr):", process.stderr)

@@ -17,6 +17,7 @@ import holidays
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 # import uuid # uuid não está sendo usado
+import re
 
 bp_converte_setor_pdf = Blueprint('bp_converte_setor_pdf', __name__)
 
@@ -100,6 +101,11 @@ def formatar_horario_para_hh_mm_v2(valor_horario):
         except ValueError: return valor_horario
     return str(valor_horario)
 
+def limpa_nome(nome):
+    # Preserva caracteres importantes para caminhos de diretório
+    # Remove apenas caracteres problemáticos para nomes de arquivo
+    return re.sub(r'[<>:"|?*]', '', nome).strip().replace(' ', '_')
+
 @bp_converte_setor_pdf.route('/api/setores/pdf', methods=['POST'])
 def converte_setores_pdf():
     conexao_principal = None
@@ -108,8 +114,20 @@ def converte_setores_pdf():
         setores = body.get('setores')
         mes_body = body.get('mes')
 
+        print(f"DEBUG: Body recebido: {body}")
+        print(f"DEBUG: Setores recebidos: {setores}")
+        print(f"DEBUG: Mês recebido: {mes_body}")
+
         if not setores or not isinstance(setores, list):
             return jsonify({'erro': 'Nenhum setor selecionado ou formato inválido'}), 400
+
+        # Tratamento para o caso onde mes_body pode ser uma lista
+        if isinstance(mes_body, list) and len(mes_body) > 0:
+            mes_body = mes_body[0]
+            print(f"DEBUG: Mês extraído da lista: {mes_body}")
+
+        if not mes_body:
+            return jsonify({'erro': 'Mês não informado'}), 400
 
         arquivos_zip_gerados_todos_setores = []
         mes_por_extenso_geral = data_atual(mes_body)['mes']
@@ -135,7 +153,7 @@ def converte_setores_pdf():
                 continue
 
             arquivos_pdf_gerados_neste_setor = []
-            setor_limpo = setor_nome.strip().replace('/', '_')
+            setor_limpo = limpa_nome(setor_nome)
 
             for funcionario in funcionarios:
                 # --- INÍCIO DO BLOCO CORRIGIDO ---
@@ -169,12 +187,15 @@ def converte_setores_pdf():
 
                 nome_limpo = funcionario.get('nome', 'NOME_PADRAO').strip().replace('/', '_')
                 caminho_pasta = f"setor/{setor_limpo}/{mes_por_extenso_geral}"
+                
+                print(f"DEBUG: Criando diretório: {caminho_pasta}")
                 os.makedirs(caminho_pasta, exist_ok=True)
+                print(f"DEBUG: Diretório criado com sucesso: {caminho_pasta}")
                 nome_base = f"FREQUENCIA_{nome_limpo.replace(' ', '_')}"
                 docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
                 pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
                 doc.save(docx_path)
-                convert_to_pdf(docx_path, pdf_path)
+                convert_to_pdf(docx_path, caminho_pasta)
                 arquivos_pdf_gerados_neste_setor.append(pdf_path)
 
                 cursor.execute(
@@ -186,14 +207,19 @@ def converte_setores_pdf():
 
             if arquivos_pdf_gerados_neste_setor:
                 zip_path_setor = f"setor/{setor_limpo}/frequencias_funcionarios_{setor_limpo}_{mes_por_extenso_geral}.zip"
+                print(f"DEBUG: Criando ZIP do setor {setor_nome}: {zip_path_setor}")
                 with zipfile.ZipFile(zip_path_setor, 'w') as zipf:
                     for pdf in arquivos_pdf_gerados_neste_setor:
+                        print(f"DEBUG: Adicionando PDF ao ZIP do setor: {pdf}")
                         zipf.write(pdf, os.path.basename(pdf))
                 arquivos_zip_gerados_todos_setores.append(zip_path_setor)
+                print(f"DEBUG: ZIP do setor {setor_nome} adicionado à lista. Total: {len(arquivos_zip_gerados_todos_setores)}")
                 cursor.execute(
                     "INSERT INTO arquivos_zip (setor, mes, caminho_zip, tipo) VALUES (%s, %s, %s, %s)",
                     (setor_nome, mes_por_extenso_geral, zip_path_setor, 'funcionarios_setor')
                 )
+            else:
+                print(f"DEBUG: Nenhum PDF gerado para o setor {setor_nome}")
             
             conexao_principal.commit()
             if conexao_principal and conexao_principal.is_connected():
@@ -201,13 +227,19 @@ def converte_setores_pdf():
                 conexao_principal.close()
 
         # ... (O restante da função para criar o ZIP final continua igual)
+        print(f"DEBUG: Total de ZIPs gerados: {len(arquivos_zip_gerados_todos_setores)}")
+        print(f"DEBUG: Lista de ZIPs: {arquivos_zip_gerados_todos_setores}")
+        
         if not arquivos_zip_gerados_todos_setores:
             return jsonify({'message': 'Nenhum arquivo ZIP de funcionários foi gerado.'}), 200
 
         if len(arquivos_zip_gerados_todos_setores) > 1:
+            print(f"DEBUG: Criando ZIP final com {len(arquivos_zip_gerados_todos_setores)} setores")
             zip_final_path = f"setor/frequencias_multissetores_funcionarios_{mes_body.replace('/','-')}_{ano}.zip"
+            print(f"DEBUG: Criando ZIP final: {zip_final_path}")
             with zipfile.ZipFile(zip_final_path, 'w') as zipf:
                 for zip_file in arquivos_zip_gerados_todos_setores:
+                    print(f"DEBUG: Adicionando arquivo ao ZIP final: {zip_file}")
                     zipf.write(zip_file, os.path.basename(zip_file))
             
             conexao_principal = connect_mysql()
@@ -220,8 +252,10 @@ def converte_setores_pdf():
             if conexao_principal and conexao_principal.is_connected():
                 cursor.close()
                 conexao_principal.close()
+            print(f"DEBUG: Enviando arquivo ZIP final: {zip_final_path}")
             return send_file(zip_final_path, mimetype='application/zip', as_attachment=True, download_name=os.path.basename(zip_final_path))
         elif arquivos_zip_gerados_todos_setores:
+            print(f"DEBUG: Enviando único arquivo ZIP: {arquivos_zip_gerados_todos_setores[0]}")
             return send_file(arquivos_zip_gerados_todos_setores[0], mimetype='application/zip', as_attachment=True, download_name=os.path.basename(arquivos_zip_gerados_todos_setores[0]))
         
         return jsonify({'message': 'Processamento concluído, mas nenhum ZIP para enviar.'}), 200

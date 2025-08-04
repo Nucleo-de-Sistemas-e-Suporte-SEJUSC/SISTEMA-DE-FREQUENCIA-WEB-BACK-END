@@ -83,7 +83,9 @@ def pegar_feriados_mes(ano, mes, estado='AM'):
     return feriados_mes, pontos_facultativos_mes
 
 def limpa_nome(nome):
-    return re.sub(r'[^\w\s-]', '', nome).strip().replace(' ', '_')
+    # Preserva caracteres importantes para caminhos de diretório
+    # Remove apenas caracteres problemáticos para nomes de arquivo
+    return re.sub(r'[<>:"|?*]', '', nome).strip().replace(' ', '_')
 
 
 def formatar_horario_para_hh_mm_v2(valor_horario):
@@ -134,6 +136,9 @@ def converte_servidor_pdf():
         body = request.json or {}
         funcionarios_id = body.get('funcionarios', [])
 
+        print(f"DEBUG: Body recebido: {body}")
+        print(f"DEBUG: Funcionários recebidos: {funcionarios_id}")
+
         if not funcionarios_id:
             return jsonify({'erro': 'Nenhum funcionário selecionado'}), 400
 
@@ -143,6 +148,16 @@ def converte_servidor_pdf():
             return jsonify({'erro': 'IDs inválidos'}), 400
 
         mes_body = body.get('mes')
+        print(f"DEBUG: Mês recebido: {mes_body}")
+
+        # Tratamento para o caso onde mes_body pode ser uma lista
+        if isinstance(mes_body, list) and len(mes_body) > 0:
+            mes_body = mes_body[0]
+            print(f"DEBUG: Mês extraído da lista: {mes_body}")
+
+        if not mes_body:
+            return jsonify({'erro': 'Mês não informado'}), 400
+
         data_ano_mes_atual = data_atual(mes_body)
         mes_por_extenso = data_ano_mes_atual['mes']
         mes_numerico = data_ano_mes_atual['mes_numerico']
@@ -190,21 +205,28 @@ def converte_servidor_pdf():
             nome_limpo = limpa_nome(funcionario['nome'])
             setor_limpo = limpa_nome(funcionario['setor'])
             caminho_pasta = f"setor/{setor_limpo}/servidor/{mes_por_extenso}/{nome_limpo}"
+            
+            print(f"DEBUG: Criando diretório: {caminho_pasta}")
             os.makedirs(caminho_pasta, exist_ok=True)
+            print(f"DEBUG: Diretório criado com sucesso: {caminho_pasta}")
 
             nome_base = f"{nome_limpo}_FREQUENCIA"
             docx_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.docx"))
             pdf_path = os.path.abspath(os.path.join(caminho_pasta, f"{nome_base}.pdf"))
 
             doc.save(docx_path)
-            convert_to_pdf(docx_path, pdf_path)
+            convert_to_pdf(docx_path, caminho_pasta)
 
             arquivos_gerados.append(pdf_path)
 
      
         zip_path = os.path.abspath(f"setor/frequencias_{mes_por_extenso}.zip")
+        print(f"DEBUG: Caminho do arquivo ZIP: {zip_path}")
+        print(f"DEBUG: Arquivo ZIP existe? {os.path.exists(zip_path)}")
+        
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for pdf in arquivos_gerados:
+                print(f"DEBUG: Adicionando arquivo ao ZIP: {pdf}")
                 zipf.write(pdf, os.path.basename(pdf))
 
  
@@ -216,6 +238,7 @@ def converte_servidor_pdf():
         conexao.commit()
         conexao.close()
 
+        print(f"DEBUG: Enviando arquivo ZIP: {zip_path}")
         return send_file(
             zip_path,
             mimetype='application/zip',
