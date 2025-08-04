@@ -17,7 +17,7 @@ def buscar_setor():
         conexao = connect_mysql()
         cursor = conexao.cursor(dictionary=True)
         consulta_setores = """
-                SELECT setor, COUNT(*) AS quantidade, id
+                SELECT setor, COUNT(*) AS quantidade, id, status != 'arquivados'
                 FROM funcionarios 
                 GROUP BY setor
             """
