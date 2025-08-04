@@ -18,6 +18,7 @@ from dateutil.easter import easter
 import holidays
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+import re
 
 
 bp_converte_estagiario_pdf = Blueprint('bp_converte_estagiario_pdf', __name__)
@@ -124,6 +125,14 @@ def formatar_horario_para_hh_mm_v2(valor_horario):
   
     return str(valor_horario)
 
+def limpa_nome(nome):
+    # Remove caracteres problemáticos para caminhos de diretório e nomes de arquivo
+    # Remove barras, barras invertidas e outros caracteres problemáticos
+    nome_limpo = re.sub(r'[<>:"|?*\\/]', '', nome).strip()
+    # Substitui espaços por underscores
+    nome_limpo = nome_limpo.replace(' ', '_')
+    return nome_limpo
+
 @bp_converte_estagiario_pdf.route('/api/estagiario/pdf', methods=['POST'])
 def converte_estagiario_pdf():
     try:
@@ -208,7 +217,7 @@ def converte_estagiario_pdf():
             for placeholder, valor in troca_de_dados.items():
                 muda_texto_documento(doc, placeholder, valor)
             nome_limpo = estagiario['nome'].strip()
-            setor_limpo = estagiario['setor'].replace('/', '-').strip()
+            setor_limpo = limpa_nome(estagiario['setor'])
             caminho_pasta = f"setor/{setor_limpo}/estagiario/{mes_por_extenso}/{nome_limpo}"
             os.makedirs(caminho_pasta, exist_ok=True)
 
