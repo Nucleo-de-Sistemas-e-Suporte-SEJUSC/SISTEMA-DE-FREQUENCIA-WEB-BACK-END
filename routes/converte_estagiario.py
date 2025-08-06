@@ -208,9 +208,9 @@ def converte_estagiario_pdf():
             if mes_proximo > 12:
                 mes_proximo = 1
                 ano_periodo_fim = ano + 1
-            
-            periodo_formatado = f"21/{mes_numerico:02d} a 20/{mes_proximo:02d}/{ano_periodo_fim}"
-            
+
+            periodo_formatado = f"21/{mes_numerico:02d} a 20/{mes_proximo:02d}"
+
             print(f"DEBUG: Período formatado: {periodo_formatado}")
             print(f"DEBUG: Mês por extenso: {mes_por_extenso}")
             print(f"DEBUG: Mês numérico: {mes_numerico}")
