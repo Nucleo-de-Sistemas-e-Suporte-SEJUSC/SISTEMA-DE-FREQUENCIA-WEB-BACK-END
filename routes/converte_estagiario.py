@@ -202,18 +202,17 @@ def converte_estagiario_pdf():
 
             cria_dias_da_celula(doc, ano, mes_numerico, estagiario, todos_feriados_do_periodo, todos_pontos_facultativos_do_periodo)
 
-            # Calcular o período correto: 21 do mês atual a 20 do próximo mês
             mes_proximo = mes_numerico + 1
-            ano_periodo_fim = ano
             if mes_proximo > 12:
                 mes_proximo = 1
-                ano_periodo_fim = ano + 1
 
+            # Formato do período sem ano: 21/MM a 20/MM
             periodo_formatado = f"21/{mes_numerico:02d} a 20/{mes_proximo:02d}"
 
-            print(f"DEBUG: Período formatado: {periodo_formatado}")
+            print(f"DEBUG: Período formatado (sem ano): {periodo_formatado}")
             print(f"DEBUG: Mês por extenso: {mes_por_extenso}")
             print(f"DEBUG: Mês numérico: {mes_numerico}")
+            print(f"DEBUG: Mês próximo: {mes_proximo}")
             
             troca_de_dados = {
                 "CAMPO SETOR": estagiario['setor'],
@@ -227,11 +226,15 @@ def converte_estagiario_pdf():
                 "CAMPO CARGO": str(estagiario.get('cargo')),
             }
             
-            print(f"DEBUG: Dados para substituição: {troca_de_dados}")
+            print(f"DEBUG: Dados para substituição:")
+            for key, value in troca_de_dados.items():
+                print(f"  {key}: {value}")
+            print(f"DEBUG: Verificando - CAMPO MES: '{troca_de_dados['CAMPO MES']}'")
+            print(f"DEBUG: Verificando - CAMPO PERIODO: '{troca_de_dados['CAMPO PERIODO']}'")
 
             for placeholder, valor in troca_de_dados.items():
                 if placeholder in ["CAMPO PERIODO", "CAMPO MES"]:
-                    print(f"DEBUG: Chamando função especial para {placeholder}")
+                    print(f"DEBUG: Chamando função especial para {placeholder} com valor '{valor}'")
                     muda_texto_documento_periodo(doc, placeholder, valor)
                 else:
                     muda_texto_documento(doc, placeholder, valor)
@@ -360,7 +363,7 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados, pontos_fac
             texto = "SÁBADO"
         elif dia_semana == 6:
             texto = "DOMINGO"
-        elif is_ponto_facultativo and dia_semana not in [5, 6]: # VERIFICA PONTO FACULTATIVO
+        elif is_ponto_facultativo and dia_semana not in [5, 6]: 
             texto = "PONTO FACULTATIVO"
         elif is_ferias and dia_semana not in [5, 6]:
             texto = "FÉRIAS"
@@ -395,7 +398,6 @@ def cria_dias_da_celula(doc, ano, mes_numerico, estagiario, feriados, pontos_fac
             tbl_element.remove(tr_element)
 
 def muda_texto_documento_periodo(doc, campo, valor):
-    """Função especial para substituir texto do período com fonte menor"""
     from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
     from docx.shared import Pt
     
@@ -407,7 +409,7 @@ def muda_texto_documento_periodo(doc, campo, valor):
             novo_texto = p.text.replace(campo, valor)
             p.clear()
             run = p.add_run(novo_texto)
-            run.font.size = Pt(8)
+            run.font.size = Pt(12)
             run.font.name = "Calibri"
             run.font.bold = False
             p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
@@ -422,7 +424,7 @@ def muda_texto_documento_periodo(doc, campo, valor):
                         novo_texto = p.text.replace(campo, valor)
                         p.clear()
                         run = p.add_run(novo_texto)
-                        run.font.size = Pt(8)
+                        run.font.size = Pt(12)
                         run.font.name = "Calibri"
                         run.font.bold = False
                         p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER

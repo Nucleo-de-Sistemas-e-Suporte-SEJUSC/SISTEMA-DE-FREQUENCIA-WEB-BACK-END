@@ -165,20 +165,20 @@ def converte_setores_estagiarios_pdf():
 
                 # Calcular o período correto: 21 do mês atual a 20 do próximo mês
                 mes_proximo_calc = mes_numerico + 1
-                ano_periodo_fim = ano
                 if mes_proximo_calc > 12:
                     mes_proximo_calc = 1
-                    ano_periodo_fim = ano + 1
                 
+                # Formato do período sem ano: 21/MM a 20/MM
                 periodo_formatado = f"21/{mes_numerico:02d} a 20/{mes_proximo_calc:02d}"
                 
-                print(f"DEBUG: Período formatado: {periodo_formatado}")
+                print(f"DEBUG: Período formatado (sem ano): {periodo_formatado}")
                 print(f"DEBUG: Mês por extenso: {mes_por_extenso}")
                 print(f"DEBUG: Mês numérico: {mes_numerico}")
+                print(f"DEBUG: Mês próximo: {mes_proximo_calc}")
 
                 troca_de_dados = {
                     "CAMPO SETOR": estagiario.get('setor', ''),
-                    "CAMPO MES": periodo_formatado,  # Mudei para usar o período
+                    "CAMPO MES": periodo_formatado,  # Período sem ano: 21/MM a 20/MM
                     "CAMPO NOME": estagiario.get('nome', ''),
                     "CAMPO PERIODO": periodo_formatado,
                     "CAMPO ANO": str(ano),
@@ -188,11 +188,15 @@ def converte_setores_estagiarios_pdf():
                     "CAMPO CARGO": str(estagiario.get('cargo', '')),
                 }
                 
-                print(f"DEBUG: Dados para substituição: {troca_de_dados}")
+                print(f"DEBUG: Dados para substituição:")
+                for key, value in troca_de_dados.items():
+                    print(f"  {key}: {value}")
+                print(f"DEBUG: Verificando - CAMPO MES: '{troca_de_dados['CAMPO MES']}'")
+                print(f"DEBUG: Verificando - CAMPO PERIODO: '{troca_de_dados['CAMPO PERIODO']}'")
                 
                 for placeholder, valor in troca_de_dados.items():
                     if placeholder in ["CAMPO PERIODO", "CAMPO MES"]:
-                        print(f"DEBUG: Chamando função especial para {placeholder}")
+                        print(f"DEBUG: Chamando função especial para {placeholder} com valor '{valor}'")
                         muda_texto_documento_periodo(doc, placeholder, valor)
                     else:
                         muda_texto_documento(doc, placeholder, valor)
