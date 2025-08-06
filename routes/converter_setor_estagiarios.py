@@ -163,18 +163,39 @@ def converte_setores_estagiarios_pdf():
                
                 cria_dias_da_celula(doc, ano, mes_numerico, estagiario, todos_feriados_do_periodo, todos_pontos_facultativos_do_periodo)
 
+                # Calcular o período correto: 21 do mês atual a 20 do próximo mês
+                mes_proximo_calc = mes_numerico + 1
+                ano_periodo_fim = ano
+                if mes_proximo_calc > 12:
+                    mes_proximo_calc = 1
+                    ano_periodo_fim = ano + 1
+                
+                periodo_formatado = f"21/{mes_numerico:02d} a 20/{mes_proximo_calc:02d}"
+                
+                print(f"DEBUG: Período formatado: {periodo_formatado}")
+                print(f"DEBUG: Mês por extenso: {mes_por_extenso}")
+                print(f"DEBUG: Mês numérico: {mes_numerico}")
+
                 troca_de_dados = {
                     "CAMPO SETOR": estagiario.get('setor', ''),
-                    "CAMPO MES": mes_por_extenso,
+                    "CAMPO MES": periodo_formatado,  # Mudei para usar o período
                     "CAMPO NOME": estagiario.get('nome', ''),
+                    "CAMPO PERIODO": periodo_formatado,
                     "CAMPO ANO": str(ano),
                     "CAMPO HORARIO": str(estagiario.get('horario', '')),
                     "CAMPO ENTRADA": formatar_horario_para_hh_mm_v2(estagiario.get('horario_entrada', '')),
                     "CAMPO SAÍDA": formatar_horario_para_hh_mm_v2(estagiario.get('horario_saida', '')),
                     "CAMPO CARGO": str(estagiario.get('cargo', '')),
                 }
+                
+                print(f"DEBUG: Dados para substituição: {troca_de_dados}")
+                
                 for placeholder, valor in troca_de_dados.items():
-                    muda_texto_documento(doc, placeholder, valor)
+                    if placeholder in ["CAMPO PERIODO", "CAMPO MES"]:
+                        print(f"DEBUG: Chamando função especial para {placeholder}")
+                        muda_texto_documento_periodo(doc, placeholder, valor)
+                    else:
+                        muda_texto_documento(doc, placeholder, valor)
 
                 nome_limpo = estagiario.get('nome', 'NOME_PADRAO').strip().replace('/', '_')
                 nome_base = f"FREQUENCIA_ESTAGIARIO_{nome_limpo.replace(' ', '_')}"
@@ -337,3 +358,37 @@ def cria_dias_da_celula(doc, ano_param, mes_param, estagiario, feriados, pontos_
                     run_to_mark.font.name = "Calibri"
                     run_to_mark.font.size = Pt(6)
                     p_to_mark.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+def muda_texto_documento_periodo(doc, campo, valor):
+    """Função especial para substituir texto do período com fonte menor"""
+    from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+    from docx.shared import Pt
+    
+    print(f"DEBUG: Aplicando fonte pequena para campo: {campo} com valor: {valor}")
+    
+    for p in doc.paragraphs:
+        if campo in p.text:
+            print(f"DEBUG: Encontrou campo {campo} em parágrafo")
+            novo_texto = p.text.replace(campo, valor)
+            p.clear()
+            run = p.add_run(novo_texto)
+            run.font.size = Pt(8)
+            run.font.name = "Calibri"
+            run.font.bold = False
+            p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            print(f"DEBUG: Aplicou fonte {run.font.size} no parágrafo")
+
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    if campo in p.text:
+                        print(f"DEBUG: Encontrou campo {campo} em célula de tabela")
+                        novo_texto = p.text.replace(campo, valor)
+                        p.clear()
+                        run = p.add_run(novo_texto)
+                        run.font.size = Pt(8)
+                        run.font.name = "Calibri"
+                        run.font.bold = False
+                        p.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                        print(f"DEBUG: Aplicou fonte {run.font.size} na célula")
