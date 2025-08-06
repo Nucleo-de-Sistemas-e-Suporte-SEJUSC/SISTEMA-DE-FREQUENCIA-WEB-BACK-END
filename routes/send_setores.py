@@ -18,14 +18,9 @@ def limpa_nome(nome):
 @bp_send_setor_pdf.route('/api/setores/estagiarios/<setor>/<mes>', methods=['GET'])
 def download_zip(setor, mes):
     try:
-        # --- INÍCIO DA TRANSFORMAÇÃO ---
-        # Se na URL você usa '_' para representar '/', converta aqui:
+   
         setor_para_consulta_db = setor.replace('_', '/')
-        # Se você usa outra convenção na URL, ajuste a lógica de substituição.
-        # Por exemplo, se na URL é 'SETORPARTE1PARTE2' e no BD é 'SETOR/PARTE1/PARTE2',
-        # a transformação seria mais complexa e dependeria de regras fixas.
-        # A substituição de '_' por '/' é a mais provável e simples.
-        # --- FIM DA TRANSFORMAÇÃO ---
+        
 
         mes_formatado = mes.capitalize()
         is_estagiarios = 'estagiarios' in request.path.lower()
