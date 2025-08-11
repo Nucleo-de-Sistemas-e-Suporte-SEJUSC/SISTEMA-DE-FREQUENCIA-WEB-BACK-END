@@ -1576,17 +1576,17 @@ Este projeto é de **uso interno** do órgão público e contém informações s
 ### Contato
 
 Para questões técnicas ou suporte:
-- **Email**: suporte-ti@orgao.gov.br
-- **Telefone**: (92) 3000-0000
+- **Email**: nalencardeandrade@gmail.com
+- **Telefone**: (92) 984836620
 - **Horário de Suporte**: Segunda a Sexta, 8h às 17h
 
 ---
 
 ## 📈 Versionamento e Changelog
 
-### Versão Atual: 1.0.0
+### Versão Atual: 1.5.4
 
-#### v1.0.0 (2025-01-15)
+#### v1.5.4 (11/08/2025)
 - ✅ Sistema base de autenticação
 - ✅ CRUD completo de servidores e estagiários
 - ✅ Geração de PDFs individuais e em lote
@@ -1596,23 +1596,23 @@ Para questões técnicas ou suporte:
 
 #### Próximas Versões Planejadas:
 
-**v1.1.0** (Previsto: 2025-02-15)
+**v1.1.0** (Previsto: 15/08/2025)
 - 🔄 Sistema de notificações por email
 - 🔄 Relatórios estatísticos
 - 🔄 Interface de configuração avançada
 
-**v1.2.0** (Previsto: 2025-03-15)
+**v1.2.0** (Previsto: 15/09/2025)
 - 🔄 API REST completa para integração
 - 🔄 Sistema de assinatura digital
 - 🔄 Módulo de aprovações
 
-**v2.0.0** (Previsto: 2025-06-15)
+**v2.0.0** (Previsto: 15/10/2025)
 - 🔄 Migração para arquitetura de microserviços
 - 🔄 Interface web moderna (React/Vue)
 - 🔄 Integração com sistemas corporativos
 
 ---
 
-*Documentação atualizada em: {{ data_atual() }}*  
-*Versão do Sistema: 1.0.0*  
+*Documentação atualizada em: 11/08/2025  
+*Versão do Sistema: 1.5.4*  
 *Responsável Técnico: Equipe GTI - SEJUSC*
