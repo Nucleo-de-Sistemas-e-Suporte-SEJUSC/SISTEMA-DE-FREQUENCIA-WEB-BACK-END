@@ -254,42 +254,16 @@ pip install -r requirements.txt
 
 #### 4. Configuração do Banco de Dados
 
-```sql
--- Conectar ao MySQL como root
-sudo mysql -u root -p
-
--- Criar banco de dados
-CREATE DATABASE sistema_frequenciarh CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- Criar usuário específico para a aplicação
-CREATE USER 'devop'@'%' IDENTIFIED BY 'DEVsjc@2025';
-
--- Conceder privilégios
-GRANT ALL PRIVILEGES ON sistema_frequenciarh.* TO 'devop'@'%';
-FLUSH PRIVILEGES;
-
--- Verificar criação
-SHOW DATABASES;
-SELECT user, host FROM mysql.user WHERE user = 'devop';
-```
-
-#### 5. Configuração da Aplicação
-
-```bash
-# Editar arquivo de conexão com banco de dados
-nano conection_mysql.py
-```
-
 Ajustar as configurações conforme seu ambiente:
 
 ```python
 def connect_mysql():
     try:
         connection = mysql.connector.connect(
-            host="localhost",          # ou IP do servidor MySQL
-            user="devop",              # usuário criado
-            password="DEVsjc@2025",    # senha definida
-            database="sistema_frequenciarh",
+            host="1.1.1.1",          # ou IP do servidor MySQL
+            user="usuario",              # usuário criado
+            password="senha_super_secreta",    # senha definida
+            database="banco_de_dados",
             charset='utf8mb4',
             autocommit=True
         )
@@ -314,100 +288,8 @@ import secrets
 SECRET_KEY = secrets.token_hex(32)
 
 # Outras configurações sensíveis
-DATABASE_PASSWORD = "DEVsjc@2025"
+DATABASE_PASSWORD = "senha_super_secreta"
 JWT_SECRET = secrets.token_hex(64)
-```
-
-#### 7. Criação das Estruturas de Tabelas
-
-Execute os scripts SQL necessários para criar as tabelas do sistema:
-
-```sql
--- Exemplo de estrutura básica (adapte conforme necessário)
-USE sistema_frequenciarh;
-
--- Tabela de usuários
-CREATE TABLE usuarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'editor') DEFAULT 'editor',
-    ativo BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Tabela de servidores
-CREATE TABLE servidores (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nome VARCHAR(255) NOT NULL,
-    setor VARCHAR(100) NOT NULL,
-    cargo VARCHAR(100),
-    horario_entrada TIME,
-    horario_saida TIME,
-    feriasinicio DATE,
-    feriasfinal DATE,
-    status ENUM('ativo', 'arquivado') DEFAULT 'ativo',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
--- Tabela de estagiários
-CREATE TABLE estagiarios (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nome VARCHAR(255) NOT NULL,
-    setor VARCHAR(100) NOT NULL,
-    cargo VARCHAR(100),
-    horario_entrada TIME,
-    horario_saida TIME,
-    feriasinicio DATE,
-    feriasfinal DATE,
-    status ENUM('ativo', 'arquivado') DEFAULT 'ativo',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
--- Tabela de arquivos PDF gerados
-CREATE TABLE arquivos_pdf (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    servidor_id INT,
-    estagiario_id INT,
-    caminho_pdf VARCHAR(500),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (servidor_id) REFERENCES servidores(id),
-    FOREIGN KEY (estagiario_id) REFERENCES estagiarios(id)
-);
-
--- Tabela de arquivos ZIP
-CREATE TABLE arquivos_zip (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    setor VARCHAR(100),
-    mes VARCHAR(50),
-    ano VARCHAR(4),
-    caminho_zip VARCHAR(500),
-    tipo ENUM('servidores_setor', 'estagiarios_setor', 'multisetores_geral', 'multiestagiarios_geral'),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Tabela de feriados municipais
-CREATE TABLE feriados_municipais (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    data DATE NOT NULL,
-    descricao VARCHAR(255),
-    estado VARCHAR(2) DEFAULT 'AM',
-    ponto_facultativo BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Tabela de histórico de ações
-CREATE TABLE historico_acoes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    usuario_id INT,
-    acao VARCHAR(255) NOT NULL,
-    detalhes TEXT,
-    ip_address VARCHAR(45),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-);
 ```
 
 #### 8. Inicialização da Aplicação
