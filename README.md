@@ -1573,14 +1573,6 @@ Este projeto é de **uso interno** do órgão público e contém informações s
 - **Desenvolvedores**: Implementação de novas funcionalidades, correções
 - **Usuários Finais**: Uso responsável, reporte de problemas
 
-### Contato
-
-Para questões técnicas ou suporte:
-- **Email**: nalencardeandrade@gmail.com
-- **Telefone**: (92) 984836620
-- **Horário de Suporte**: Segunda a Sexta, 8h às 17h
-
----
 
 ## 📈 Versionamento e Changelog
 
