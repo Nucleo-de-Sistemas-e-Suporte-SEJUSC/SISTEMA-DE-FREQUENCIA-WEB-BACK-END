@@ -3,14 +3,14 @@ from cerberus import Validator
 from flask import jsonify, request, Blueprint
 from conection_mysql import connect_mysql
 from mysql.connector import Error
-from flask_login import login_required
+from flask_login import login_required, current_user
 from decorador import roles_required
 
 bp_criar_servidor = Blueprint('bp_criar_servidor', __name__)
 
 @bp_criar_servidor.route('/api/criar/servidores', methods=['POST'])
-#@login_required
-#@roles_required('admin','editor')
+@login_required
+@roles_required('admin','editor')
 def criar_servidor():
     conexao = None
     cursor = None
@@ -72,15 +72,15 @@ def criar_servidor():
                     setor, nome, matricula, cargo, horario, horarioentrada, horariosaida, 
                     data_Nascimento, sexo, estado_Civil, naturalidade, nacionalidade, 
                     identidade, titulo_Eleitor, cpf, pis, data_Admissao,
-                    endereco, nome_pai, nome_mae, servico_militar, carteira_profissional, data_posse
+                    endereco, nome_pai, nome_mae, servico_militar, carteira_profissional, data_posse, cadastrado_por
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(criar_dados_servidor, (
                 setor, nome, matricula, cargo, horario, horarioentrada, horariosaida,
                 dataNascimento, sexo, estadoCivil, naturalidade,
                 nacionalidade, identidade, tituloEleitor, cpf, pis, dataAdmissao,
-                endereco, nome_pai, nome_mae, servico_militar, carteira_profissional, data_posse
+                endereco, nome_pai, nome_mae, servico_militar, carteira_profissional, data_posse, current_user.id
             ))
             conexao.commit()
         except Error as db_err:
