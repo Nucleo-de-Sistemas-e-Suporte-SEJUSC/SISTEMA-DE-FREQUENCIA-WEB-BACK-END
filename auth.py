@@ -4,7 +4,7 @@ import mysql.connector
 
 auth_bp = Blueprint("auth", __name__)
 
-# 🔹 Criando o login_manager DENTRO do auth.py
+
 login_manager = LoginManager()
 
 def get_db_connection():

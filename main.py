@@ -37,14 +37,15 @@ from routes.send_documentos import bp_send_documentos
 from routes.send_ficha_funcional import bp_send_ficha_funcional
 from routes.gerar_ficha_funcional import bp_gerar_ficha_funcional 
 from routes.buscar_documentos import bp_buscar_documentos
+from routes.ultimos_cadastros import bp_ultimos_cadastros
 from auth import auth_bp, login_manager  # ✅ Importação correta
 import os
 
 app = Flask(__name__)
-# Configura CORS uma única vez com os dois domínios permitidos
+
 CORS(app, supports_credentials=True, origin_regex=r"http://12\.90\.4\.\d+:8081")
 
-# Adiciona os cabeçalhos extras corretamente (sem sobrescrever)
+
 @app.after_request
 def after_request(response):
     origin = response.headers.get('Access-Control-Allow-Origin')
@@ -94,7 +95,8 @@ app.register_blueprint(bp_documentos)
 app.register_blueprint(bp_send_documentos)
 app.register_blueprint(bp_gerar_ficha_funcional)
 app.register_blueprint(bp_send_ficha_funcional)
-app.register_blueprint(bp_buscar_documentos) 
+app.register_blueprint(bp_buscar_documentos)
+app.register_blueprint(bp_ultimos_cadastros)
 @app.route("/")
 def home():
     return  "bem vindo ao sistema de rh "
