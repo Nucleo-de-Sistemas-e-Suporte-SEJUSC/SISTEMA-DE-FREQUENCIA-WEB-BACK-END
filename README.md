@@ -362,9 +362,9 @@ services:
   db:
     image: mysql:8.0
     environment:
-      MYSQL_DATABASE: sistema_frequenciarh
-      MYSQL_USER: devop
-      MYSQL_PASSWORD: DEVsjc@2025
+      MYSQL_DATABASE: ""
+      MYSQL_USER: ""
+      MYSQL_PASSWORD: ""
       MYSQL_ROOT_PASSWORD: rootpassword
     ports:
       - "3306:3306"
@@ -766,10 +766,10 @@ from mysql.connector import pooling
 def connect_mysql():
     try:
         connection = mysql.connector.connect(
-            host="12.90.1.2",
-            user="devop", 
-            password="DEVsjc@2025",
-            database="sistema_frequenciarh",
+            host="",
+            user="", 
+            password="",
+            database="",
             charset='utf8mb4',
             autocommit=True
         )
@@ -1513,9 +1513,9 @@ python scripts/verificar_integridade.py
 FLASK_ENV=production
 SECRET_KEY=sua_chave_super_secreta_aqui
 DATABASE_HOST=localhost
-DATABASE_USER=devop
+DATABASE_USER=user_banco_de_dados
 DATABASE_PASSWORD=senha_forte
-DATABASE_NAME=sistema_frequenciarh
+DATABASE_NAME=nome_banc0_de_dados
 CORS_ORIGINS=https://seu-dominio.com
 ```
 
